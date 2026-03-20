@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  password      String
+  role          String   @default("user") // "user" or "admin"
+  otp           String?
+  otpExpires    DateTime?
+  createdAt     DateTime @default(now())
+  
+  boards        Board[]  @relation("UserBoards")
+  assignedTasks Task[]   @relation("UserTasks")
+  createdTasks  Task[]   @relation("AdminTasks")
+  folders       Folder[] @relation("UserFolders")
+  docs          Doc[]    @relation("UserDocs")
+  whiteboards   Whiteboard[] @relation("UserWhiteboards")
+}
+
+model Board {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  creator     User     @relation("UserBoards", fields: [createdBy], references: [id])
+  lists       List[]
+  tasks       Task[]
+}
+
+model List {
+  id        String   @id @default(uuid())
+  title     String
+  order     Int      @default(0)
+  boardId   String
+  createdAt DateTime @default(now())
+
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  status      String    @default("pending") // "pending", "in-progress", "completed"
+  priority    String    @default("medium")  // "low", "medium", "high"
+  order       Int       @default(0)
+  dueDate     DateTime?
+  tags        String[]  @default([])
+  
+  listId      String?
+  boardId     String?
+  folderId    String?
+  assignedTo  String
+  createdBy   String
+  createdAt   DateTime  @default(now())
+
+  list        List?     @relation(fields: [listId], references: [id])
+  board       Board?    @relation(fields: [boardId], references: [id])
+  folder      Folder?   @relation(fields: [folderId], references: [id])
+  subTasks    SubTask[]
+  assignee    User      @relation("UserTasks", fields: [assignedTo], references: [id])
+  creator     User      @relation("AdminTasks", fields: [createdBy], references: [id])
+}
+
+model SubTask {
+  id        String   @id @default(uuid())
+  title     String
+  completed Boolean  @default(false)
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model Folder {
+  id             String   @id @default(uuid())
+  name           String
+  parentFolderId String?
+  createdBy      String
+  createdAt      DateTime @default(now())
+
+  parent         Folder?  @relation("FolderHierarchy", fields: [parentFolderId], references: [id])
+  subFolders     Folder[] @relation("FolderHierarchy")
+  creator        User     @relation("UserFolders", fields: [createdBy], references: [id])
+  tasks          Task[]
+  docs           Doc[]
+  whiteboards    Whiteboard[]
+}
+
+model Doc {
+  id        String   @id @default(uuid())
+  title     String
+  content   String?  @db.Text
+  folderId  String?
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  folder    Folder?  @relation(fields: [folderId], references: [id])
+  creator   User     @relation("UserDocs", fields: [createdBy], references: [id])
+}
+
+model Whiteboard {
+  id        String   @id @default(uuid())
+  title     String
+  data      Json?    // For shapes/drawings
+  folderId  String?
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  folder    Folder?  @relation(fields: [folderId], references: [id])
+  creator   User     @relation("UserWhiteboards", fields: [createdBy], references: [id])
+}
