@@ -47,4 +47,14 @@ const updateWhiteboard = async (req, res) => {
     }
 };
 
-module.exports = { createWhiteboard, getWhiteboards, getWhiteboardById, updateWhiteboard };
+const deleteWhiteboard = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.whiteboard.delete({ where: { id } });
+        res.json({ message: 'Whiteboard deleted successfully' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+};
+
+module.exports = { createWhiteboard, getWhiteboards, getWhiteboardById, updateWhiteboard, deleteWhiteboard };

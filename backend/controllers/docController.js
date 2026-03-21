@@ -15,7 +15,9 @@ const createDoc = async (req, res) => {
 
 const getDocs = async (req, res) => {
     try {
+        const where = req.user.role === 'admin' ? {} : { createdBy: req.user.id };
         const docs = await prisma.doc.findMany({
+            where,
             orderBy: { updatedAt: 'desc' }
         });
         res.json(docs);
@@ -38,9 +40,11 @@ const getDocById = async (req, res) => {
 const updateDoc = async (req, res) => {
     try {
         const { id } = req.params;
+        const existing = await prisma.doc.findUnique({ where: { id } });
+        if (!existing) return res.status(404).json({ error: 'Document not found' });
         const doc = await prisma.doc.update({
             where: { id },
-            data: { ...req.body, lastEditedBy: req.user.id }
+            data: { ...req.body, lastEditedBy: req.user.id, version: (existing.version || 1) + 1 }
         });
         res.json(doc);
     } catch (error) {

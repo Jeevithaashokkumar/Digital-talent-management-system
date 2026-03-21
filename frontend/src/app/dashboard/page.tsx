@@ -7,11 +7,25 @@ import BoardHeader from '@/components/kanban/BoardHeader';
 import KanbanList from '@/components/kanban/KanbanList';
 import CreateListModal from '@/components/kanban/CreateListModal';
 import CreateAssetModal from '@/components/layout/CreateAssetModal';
-import DocEditor from '@/components/docs/DocEditor';
-import FolderTree from '@/components/folders/FolderTree';
-import WhiteboardCanvas from '@/components/whiteboards/WhiteboardCanvas';
+import TaskKanbanBoard from '@/components/kanban/TaskKanbanBoard';
+import DocModule from '@/components/docs/DocModule';
+import FolderModule from '@/components/folders/FolderModule';
+import WhiteboardModule from '@/components/whiteboards/WhiteboardModule';
+import NeuralNodesModule from '@/components/nodes/NeuralNodesModule';
+import KnowledgeGraphModule from '@/components/knowledge/KnowledgeGraphModule';
+import MissionTableModule from '@/components/missions/MissionTableModule';
+import AdminOverview from '@/components/admin/AdminOverview';
+import UserManagement from '@/components/admin/UserManagement';
+import SystemSettings from '@/components/admin/SystemSettings';
+import AnalyticsModule from '@/components/admin/AnalyticsModule';
+import AdminSidebar from '@/components/layout/AdminSidebar';
+import UserSidebar from '@/components/layout/UserSidebar';
+import UserOverview from '@/components/user/UserOverview';
+import ChatModule from '@/components/chat/ChatModule';
+import CallModule from '@/components/call/CallModule';
 import ToastContainer from '@/components/ui/ToastContainer';
 import { useBoardStore } from '@/store/useBoardStore';
+import api from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Plus, LayoutGrid, LayoutList, Settings, Users, Activity, Search, Bell, Info, Share, Zap, Filter, MoreHorizontal, CheckCircle2, Clock, Trash2, Edit2, Layout, Grid, Folder as FolderIcon, FileText, Monitor } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
@@ -34,6 +48,8 @@ export default function Dashboard() {
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [selectedWhiteboard, setSelectedWhiteboard] = useState<any>(null);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const [adminStats, setAdminStats] = useState<any>({});
+  const [userStats, setUserStats] = useState<any>({});
   const [toasts, setToasts] = useState<any[]>([]);
 
   const isAdmin = user?.role === 'admin';
@@ -69,17 +85,48 @@ export default function Dashboard() {
     }
   }, []); // Empty dependency array means it only runs on mount (or if dependencies change, but we removed them)
 
+  const fetchAdminStats = useCallback(async () => {
+    if (isAdmin) {
+      try {
+        const res = await api.get('/analytics/admin');
+        setAdminStats(res.data);
+      } catch (e) {
+        console.error("Admin Stats Failed:", e);
+      }
+    }
+  }, [isAdmin]);
+
+  const fetchUserStats = useCallback(async () => {
+    if (!isAdmin) {
+      try {
+        const res = await api.get('/analytics/user');
+        setUserStats(res.data);
+      } catch (e) {
+        console.error("User Stats Failed:", e);
+      }
+    }
+  }, [isAdmin]);
+
   useEffect(() => {
     fetchUser();
     fetchBoardDetails('default');
     fetchInitialData();
+    fetchAdminStats();
+    fetchUserStats();
+    
+    if (isAdmin && activeView === 'Boards') {
+      setActiveView('admin-dashboard');
+    } else if (!isAdmin && activeView === 'Boards') {
+      setActiveView('user-dashboard');
+    }
+
     (window as any).setActiveListForTask = (id: string) => {
        setAssetToCreate('Task');
     };
     (window as any).openCreateAssetModal = (type: any) => setAssetToCreate(type);
     (window as any).addToast = addToast;
     (window as any).toggleSidebar = () => setSidebarOpen(prev => !prev);
-  }, [fetchBoardDetails, fetchUser, fetchInitialData]);
+  }, [fetchBoardDetails, fetchUser, fetchInitialData, fetchAdminStats, isAdmin]);
 
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
@@ -149,60 +196,11 @@ export default function Dashboard() {
       <Navbar />
       
       <div className="flex-1 flex overflow-hidden z-10 relative">
-        {/* Sidebar Navigation - Responsive */}
-        <aside className={`${sidebarOpen ? 'w-72 translate-x-0' : 'w-20 lg:translate-x-0 -translate-x-full'} bg-white/5 backdrop-blur-3xl border-r border-white/10 transition-all duration-500 flex flex-col shadow-2xl absolute lg:relative h-full z-30`}>
-          <div className="p-6 flex items-center justify-between border-b border-white/5">
-            {sidebarOpen && <span className="font-black text-xs text-indigo-400 uppercase tracking-[0.3em] drop-shadow-sm">Operations</span>}
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white hover:bg-white/10 p-2.5 rounded-xl transition-all hover:rotate-180 duration-500 bg-white/5 shadow-lg border border-white/10 hidden lg:block">
-               <Settings size={20} />
-            </button>
-          </div>
-
-          <nav className="flex-1 p-4 space-y-3">
-             {[
-               { icon: LayoutGrid, label: 'Boards', color: 'text-blue-400' },
-               { icon: Users, label: 'Team Matrix', color: 'text-indigo-400' },
-               { icon: Activity, label: 'Analytics', color: 'text-emerald-400' },
-               { icon: Settings, label: 'Core System', color: 'text-slate-400' }
-             ].map((item, i) => (
-               <button 
-                key={i} 
-                onClick={() => {
-                  setActiveView(item.label);
-                  (window as any).addToast?.(`Redirection: ${item.label} Perspective`, 'info');
-                }}
-                className={`w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-black transition-all group relative overflow-hidden ${activeView === item.label ? 'bg-indigo-500 text-white shadow-2xl shadow-indigo-500/30 translate-x-1' : 'text-white/50 hover:bg-white/5 hover:text-white hover:translate-x-1'}`}
-               >
-                  <item.icon size={26} className={`${activeView === item.label ? 'text-white scale-110' : item.color} group-hover:scale-125 transition-transform duration-300`} />
-                  {sidebarOpen && <span className="tracking-tight">{item.label}</span>}
-                  {activeView !== item.label && sidebarOpen && <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-white/10 group-hover:bg-indigo-400 transition-colors"></div>}
-               </button>
-             ))}
-          </nav>
-          {/* Folder Hierarchy - Only if sidebar is open */}
-          {sidebarOpen && (
-            <div className="flex-1 overflow-y-auto custom-scrollbar border-t border-white/5 py-4">
-               <FolderTree 
-                 folders={folders.filter(f => !f.parentFolderId)} 
-                 onSelectFolder={(id) => {
-                    setActiveFolder(id);
-                    setActiveView('Folder');
-                 }}
-                 activeFolder={activeFolder}
-               />
-            </div>
-          )}
-
-          {/* Sidebar Footer */}
-          {sidebarOpen && (
-            <div className="p-4 m-4 rounded-3xl bg-gradient-to-br from-indigo-600/20 to-purple-600/20 border border-white/10 backdrop-blur-md shrink-0">
-              <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">Matrix Health</p>
-              <div className="w-full h-2 bg-black/20 rounded-full overflow-hidden">
-                <div className="w-[85%] h-full bg-gradient-to-r from-indigo-500 to-pink-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"></div>
-              </div>
-            </div>
-          )}
-        </aside>
+        {isAdmin ? (
+          <AdminSidebar />
+        ) : (
+          <UserSidebar isOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+        )}
 
         {/* Board Main Area */}
         <main className="flex-1 flex flex-col overflow-hidden relative">
@@ -210,121 +208,82 @@ export default function Dashboard() {
           
           <div className="flex-1 overflow-hidden relative">
             {activeView === 'Boards' && (
-              <DragDropContext onDragEnd={onDragEnd}>
-                <div className="flex-1 h-full overflow-x-auto p-8 flex items-start gap-8 custom-scrollbar scroll-smooth">
-                  {currentBoard?.lists.map((list) => (
-                    <KanbanList key={list.id} list={list} />
-                  ))}
+              <TaskKanbanBoard />
+            )}
 
-                  {/* Add List Placeholder - ADMIN ONLY */}
-                  {isAdmin && (
-                    <button 
-                      onClick={() => {
-                        setIsAddingList(true);
-                        addToast("Opening Quantum List Matrix...", "info");
-                      }}
-                      className="w-80 flex-shrink-0 bg-white/5 hover:bg-white/10 backdrop-blur-2xl text-white/50 hover:text-white p-6 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-xl font-black transition-all border border-dashed border-white/20 shadow-2xl group active:scale-95 min-h-[250px]"
-                    >
-                      <div className="bg-white/10 p-4 rounded-full group-hover:bg-indigo-500 group-hover:scale-110 transition-all shadow-inner">
-                        <Plus size={32} />
-                      </div>
-                      <span className="tracking-tighter uppercase text-xs tracking-[0.3em]">Initialize New List</span>
-                    </button>
-                  )}
-                </div>
-              </DragDropContext>
+            {activeView === 'user-dashboard' && (
+              <UserOverview stats={userStats} />
+            )}
+
+            {activeView === 'Chat' && (
+              <ChatModule />
+            )}
+
+            {activeView === 'Call' && (
+              <CallModule />
             )}
 
             {activeView === 'Doc' && (
-              selectedDoc ? (
-                <DocEditor 
-                  doc={selectedDoc} 
-                  onSave={async (id, content, title) => {
-                    const { docService } = await import('@/services/boardService');
-                    await docService.updateDoc(id, { title, content });
-                    addToast(`Document '${title}' Synchronized`, 'success');
-                    setSelectedDoc(null);
-                    fetchInitialData();
-                  }} 
-                  onBack={() => setSelectedDoc(null)} 
-                />
-              ) : (
-                <div className="p-10 flex flex-col gap-8 h-full overflow-y-auto custom-scrollbar">
-                  <h2 className="text-4xl font-black text-white tracking-tighter">Documentation Matrix</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {docs.map(doc => (
-                      <div 
-                        key={doc.id} 
-                        onClick={() => setSelectedDoc(doc)}
-                        className="bg-white/5 border border-white/10 p-8 rounded-[2.5rem] flex flex-col gap-4 hover:bg-white/10 transition-all cursor-pointer group shadow-2xl"
-                      >
-                        <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-all">
-                          <FileText size={24} />
-                        </div>
-                        <h4 className="text-white font-black text-lg">{doc.title}</h4>
-                        <p className="text-white/40 text-xs font-bold leading-relaxed truncate">{doc.content?.replace(/<[^>]*>?/gm, '').substring(0, 50) || 'Initialized empty manifest...'}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
+              <DocModule />
             )}
 
             {activeView === 'Whiteboard' && (
-              selectedWhiteboard ? (
-                <WhiteboardCanvas 
-                  board={selectedWhiteboard} 
-                  onSave={async (id, data) => {
-                    const { whiteboardService } = await import('@/services/boardService');
-                    await whiteboardService.updateWhiteboard(id, { data });
-                    addToast(`Visual State '${selectedWhiteboard.title}' Cached`, 'success');
-                    setSelectedWhiteboard(null);
-                    fetchInitialData();
-                  }} 
-                  onBack={() => setSelectedWhiteboard(null)} 
-                />
-              ) : (
-                <div className="p-10 flex flex-col gap-8 h-full overflow-y-auto custom-scrollbar">
-                  <h2 className="text-4xl font-black text-white tracking-tighter">Whiteboard Nexus</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {whiteboards.map(wb => (
-                      <div 
-                        key={wb.id} 
-                        onClick={() => setSelectedWhiteboard(wb)}
-                        className="bg-white/5 border border-white/10 p-8 rounded-[2.5rem] flex flex-col gap-4 hover:bg-white/10 transition-all cursor-pointer group shadow-2xl"
-                      >
-                        <div className="w-12 h-12 rounded-2xl bg-rose-500/20 flex items-center justify-center text-rose-400 group-hover:scale-110 transition-all">
-                          <Monitor size={24} />
-                        </div>
-                        <h4 className="text-white font-black text-lg">{wb.title}</h4>
-                        <p className="text-white/40 text-xs font-bold leading-relaxed">Interactive visual board manifest.</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
+              <WhiteboardModule />
+            )}
+
+            {activeView === 'Neural Nodes' && (
+              <NeuralNodesModule />
+            )}
+
+            {activeView === 'Knowledge Graph' && (
+              <KnowledgeGraphModule />
+            )}
+
+            {activeView === 'Mission Table' && (
+              <MissionTableModule />
             )}
 
             {activeView === 'Folder' && (
-              <div className="p-10 flex flex-col gap-8 h-full overflow-y-auto custom-scrollbar">
-                <h2 className="text-4xl font-black text-white tracking-tighter">
-                  {activeFolder ? `Nexus: ${folders.find(f => f.id === activeFolder)?.name}` : 'Asset Logistics'}
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                   {folders.filter(f => activeFolder ? f.parentFolderId === activeFolder : !f.parentFolderId).map(f => (
-                     <div 
-                        key={f.id} 
-                        onClick={() => setActiveFolder(f.id)}
-                        className="bg-white/5 border border-white/10 p-8 rounded-[2.5rem] flex flex-col gap-4 hover:bg-white/10 transition-all cursor-pointer group shadow-2xl"
-                     >
-                        <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-all">
-                           <FolderIcon size={24} />
-                        </div>
-                        <h4 className="text-white font-black text-lg">{f.name}</h4>
-                        <p className="text-white/40 text-xs font-bold leading-relaxed">Encapsulated data node.</p>
-                     </div>
-                   ))}
-                </div>
+              <FolderModule />
+            )}
+
+            {activeView === 'admin-dashboard' && (
+              <AdminOverview stats={adminStats} />
+            )}
+
+            {activeView === 'admin-users' && (
+              <UserManagement />
+            )}
+
+            {activeView === 'admin-settings' && (
+              <SystemSettings />
+            )}
+
+            {activeView === 'admin-analytics' && (
+              <AnalyticsModule stats={adminStats} />
+            )}
+
+            {activeView === 'admin-tasks' && (
+              <div className="h-full overflow-hidden flex flex-col">
+                 <div className="p-8 pb-0">
+                    <h2 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">Global Directives</h2>
+                    <p className="text-white/30 text-[10px] font-black uppercase tracking-[0.3em] mt-2 mb-6">Manage every task across the matrix.</p>
+                 </div>
+                 <div className="flex-1 overflow-auto custom-scrollbar px-8 pb-8">
+                    <TaskKanbanBoard />
+                 </div>
+              </div>
+            )}
+
+            {activeView === 'admin-missions' && (
+              <div className="h-full overflow-hidden flex flex-col">
+                 <div className="p-8 pb-0">
+                    <h2 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">Strategic Objectives</h2>
+                    <p className="text-white/30 text-[10px] font-black uppercase tracking-[0.3em] mt-2 mb-6">Coordinate global missions and team assignments.</p>
+                 </div>
+                 <div className="flex-1 overflow-auto custom-scrollbar px-8 pb-8">
+                    <MissionTableModule />
+                 </div>
               </div>
             )}
 

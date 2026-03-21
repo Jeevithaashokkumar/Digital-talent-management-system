@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native"]
 }
 
 datasource db {
@@ -13,6 +14,7 @@ model User {
   email         String   @unique
   password      String
   role          String   @default("user") // "user" or "admin"
+  status        String   @default("active") // "active" or "inactive"
   otp           String?
   otpExpires    DateTime?
   createdAt     DateTime @default(now())
@@ -23,6 +25,24 @@ model User {
   folders       Folder[] @relation("UserFolders")
   docs          Doc[]    @relation("UserDocs")
   whiteboards   Whiteboard[] @relation("UserWhiteboards")
+  files         File[]   @relation("UserFiles")
+  neuralNodes   NeuralNode[] @relation("UserNeuralNodes")
+  neuralGraphs  NeuralGraph[] @relation("UserNeuralGraphs")
+  knowledgeNodes KnowledgeNode[] @relation("UserKnowledgeNodes")
+  missions      Mission[] @relation("UserMissions")
+  sentMessages  Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  senderId  String
+  receiverId String? // Null for team chat (broadcast)
+  createdAt DateTime @default(now())
+
+  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver  User?    @relation("ReceivedMessages", fields: [receiverId], references: [id])
 }
 
 model Board {
@@ -95,6 +115,7 @@ model Folder {
   tasks          Task[]
   docs           Doc[]
   whiteboards    Whiteboard[]
+  files          File[]
 }
 
 model Doc {
@@ -104,6 +125,7 @@ model Doc {
   folderId     String?
   createdBy    String
   lastEditedBy String?
+  version      Int      @default(1)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -122,4 +144,94 @@ model Whiteboard {
 
   folder    Folder?  @relation(fields: [folderId], references: [id])
   creator   User     @relation("UserWhiteboards", fields: [createdBy], references: [id])
+}
+
+model File {
+  id           String   @id @default(uuid())
+  name         String
+  originalName String
+  mimeType     String
+  size         Int
+  path         String
+  url          String
+  folderId     String?
+  uploadedBy   String
+  createdAt    DateTime @default(now())
+
+  folder    Folder?  @relation(fields: [folderId], references: [id])
+  uploader  User     @relation("UserFiles", fields: [uploadedBy], references: [id])
+}
+
+model NeuralNode {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  type        String   // idea, task, note, insight
+  status      String   @default("active") // active, archived
+  priority    String   @default("medium") // low, medium, high
+  createdBy   String
+  graphId     String?
+  linkedNodes String   @default("[]") // Store as JSON string array
+  position    String?  // Store as JSON string {x, y}
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator     User     @relation("UserNeuralNodes", fields: [createdBy], references: [id])
+  graph       NeuralGraph? @relation("GraphNodes", fields: [graphId], references: [id])
+}
+
+model NeuralGraph {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  nodes       NeuralNode[] @relation("GraphNodes")
+  
+  creator     User     @relation("UserNeuralGraphs", fields: [createdBy], references: [id])
+}
+
+model KnowledgeNode {
+  id          String   @id @default(uuid())
+  name        String
+  type        String   // concept, document, task, user
+  sourceId    String?  // Original entity ID (taskId, docId, etc)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator     User     @relation("UserKnowledgeNodes", fields: [createdBy], references: [id])
+  outgoing    KnowledgeRelationship[] @relation("SourceNode")
+  incoming    KnowledgeRelationship[] @relation("TargetNode")
+}
+
+model KnowledgeRelationship {
+  id           String   @id @default(uuid())
+  sourceNodeId String
+  targetNodeId String
+  relationType String   // depends_on, related_to, assigned_to
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sourceNode   KnowledgeNode @relation("SourceNode", fields: [sourceNodeId], references: [id])
+  targetNode   KnowledgeNode @relation("TargetNode", fields: [targetNodeId], references: [id])
+}
+
+model Mission {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  status      String   @default("not_started") // not_started, in_progress, completed, blocked
+  priority    String   @default("medium") // low, medium, high
+  assignedUsers String @default("[]") // JSON string array of User IDs
+  startDate   DateTime?
+  dueDate     DateTime?
+  progress    Int      @default(0) // percentage
+  relatedTasks String  @default("[]") // JSON string array of task IDs
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator     User     @relation("UserMissions", fields: [createdBy], references: [id])
 }

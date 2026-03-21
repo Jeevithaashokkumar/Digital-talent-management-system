@@ -13,7 +13,7 @@ import { useBoardStore } from '@/store/useBoardStore';
 
 export default function Navbar() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
-  const { setActiveView } = useBoardStore();
+  const setActiveView = useBoardStore(state => state.setActiveView);
 
   const menuData: any = {
     'Spaces': [
@@ -107,16 +107,16 @@ export default function Navbar() {
                   <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-4">Launch New Action</h3>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { l: 'Task', i: Laptop, c: 'bg-blue-500', type: 'Task' },
-                      { l: 'Doc', i: Layout, c: 'bg-emerald-500', type: 'Doc' },
-                      { l: 'Folder', i: Layout, c: 'bg-amber-500', type: 'Folder' },
-                      { l: 'Whiteboard', i: Layout, c: 'bg-pink-500', type: 'Whiteboard' }
+                      { l: 'Task', i: Laptop, c: 'bg-blue-500', action: () => (window as any).openCreateAssetModal?.('Task') },
+                      { l: 'Doc', i: Layout, c: 'bg-emerald-500', action: () => setActiveView('Doc') },
+                      { l: 'Folder', i: Layout, c: 'bg-amber-500', action: () => setActiveView('Folder') },
+                      { l: 'Whiteboard', i: Layout, c: 'bg-pink-500', action: () => setActiveView('Whiteboard') }
                     ].map(btn => (
                       <button 
                         key={btn.l} 
                         onClick={() => {
                           setActiveMenu(null);
-                          (window as any).openCreateAssetModal?.(btn.type);
+                          btn.action();
                         }}
                         className="flex flex-col items-center gap-3 p-4 rounded-2xl hover:bg-white/10 transition-all group border border-transparent hover:border-white/10"
                       >

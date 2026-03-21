@@ -31,9 +31,19 @@ const getAllTasks = async (req, res) => {
     try {
         const { status, priority, assignedTo, boardId } = req.query;
         const where = {};
+        
+        // Strict role-based isolation for non-admins
+        if (req.user.role !== 'admin') {
+            where.OR = [
+                { assignedTo: req.user.id },
+                { createdBy: req.user.id }
+            ];
+        } else if (assignedTo) {
+            where.assignedTo = assignedTo;
+        }
+
         if (status) where.status = status;
         if (priority) where.priority = priority;
-        if (assignedTo) where.assignedTo = assignedTo;
         if (boardId) where.boardId = boardId;
 
         const tasks = await prisma.task.findMany({
