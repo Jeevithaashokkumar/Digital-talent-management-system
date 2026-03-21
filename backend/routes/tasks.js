@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { 
   createTask, 
-  getAllTasks, 
+  getAllTasks,
+  getTaskById,
   getMyTasks, 
-  updateTask, 
+  updateTask,
+  updateTaskStatus,
   deleteTask, 
   getAnalytics,
   createSubTask, 
@@ -13,13 +15,16 @@ const {
 } = require('../controllers/taskController');
 const { verifyToken, isAdmin } = require('../middleware/auth');
 
-// Task Routes
-router.post('/', verifyToken, isAdmin, createTask);
+// Task CRUD
+router.post('/', verifyToken, createTask);
+router.get('/', verifyToken, getAllTasks);
 router.get('/all', verifyToken, getAllTasks);
 router.get('/my', verifyToken, getMyTasks);
 router.get('/analytics', verifyToken, getAnalytics);
+router.get('/:id', verifyToken, getTaskById);
 router.put('/:id', verifyToken, updateTask);
-router.delete('/:id', verifyToken, isAdmin, deleteTask);
+router.patch('/:id/status', verifyToken, updateTaskStatus);
+router.delete('/:id', verifyToken, deleteTask);
 
 // Subtask Routes
 router.post('/:taskId/subtasks', verifyToken, createSubTask);

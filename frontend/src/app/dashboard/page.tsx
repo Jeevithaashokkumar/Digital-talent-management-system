@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import Navbar from '@/components/layout/Navbar';
 import BoardHeader from '@/components/kanban/BoardHeader';
@@ -17,8 +17,14 @@ import { Plus, LayoutGrid, LayoutList, Settings, Users, Activity, Search, Bell, 
 import { v4 as uuidv4 } from 'uuid';
 
 export default function Dashboard() {
-  const { user, fetchUser } = useAuthStore();
-  const { currentBoard, fetchBoardDetails, moveCard, loading, activeView, setActiveView } = useBoardStore();
+  const user = useAuthStore(state => state.user);
+  const fetchUser = useAuthStore(state => state.fetchUser);
+  const currentBoard = useBoardStore(state => state.currentBoard);
+  const fetchBoardDetails = useBoardStore(state => state.fetchBoardDetails);
+  const moveCard = useBoardStore(state => state.moveCard);
+  const loading = useBoardStore(state => state.loading);
+  const activeView = useBoardStore(state => state.activeView);
+  const setActiveView = useBoardStore(state => state.setActiveView);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isAddingList, setIsAddingList] = useState(false);
   const [assetToCreate, setAssetToCreate] = useState<'Task' | 'Doc' | 'Folder' | 'Whiteboard' | null>(null);
@@ -47,7 +53,7 @@ export default function Dashboard() {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
       const { docService, folderService, whiteboardService } = await import('@/services/boardService');
       const [dRes, fRes, wRes] = await Promise.all([
@@ -61,7 +67,7 @@ export default function Dashboard() {
     } catch (e) {
       console.error("Neural Fetch Failed:", e);
     }
-  };
+  }, []); // Empty dependency array means it only runs on mount (or if dependencies change, but we removed them)
 
   useEffect(() => {
     fetchUser();

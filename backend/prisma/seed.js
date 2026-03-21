@@ -37,10 +37,10 @@ async function main() {
 
   // 4. Setup Cards
   const cardData = [
-    { title: 'Neural Core Integration', listId: lists[0].id, priority: 'high', tags: ['Backend', 'Security'] },
-    { title: '3D Matrix Dashboard UI', listId: lists[1].id, priority: 'medium', tags: ['Frontend', 'UI'] },
-    { title: 'SMTP Relay Protocol', listId: lists[1].id, priority: 'low', tags: ['Infrastructure'] },
-    { title: 'User Auth Matrix', listId: lists[3].id, priority: 'high', tags: ['Security'] }
+    { title: 'Neural Core Integration', listId: lists[0].id, priority: 'high', tags: 'Backend,Security' },
+    { title: '3D Matrix Dashboard UI', listId: lists[1].id, priority: 'medium', tags: 'Frontend,UI' },
+    { title: 'SMTP Relay Protocol', listId: lists[1].id, priority: 'low', tags: 'Infrastructure' },
+    { title: 'User Auth Matrix', listId: lists[3].id, priority: 'high', tags: 'Security' }
   ];
 
   await Promise.all(cardData.map((c, i) => 

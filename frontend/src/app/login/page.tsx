@@ -39,8 +39,8 @@ export default function Login() {
         captchaId: captchaData.id,
         captchaText
       });
-      if (res.data.debug) {
-        setError(`SMTP Error: ${res.data.debug}`);
+      if (res.data.debugOtp) {
+        setDemoOtp(res.data.debugOtp);
       }
       setStep(2);
     } catch (err: any) {
@@ -144,6 +144,13 @@ export default function Login() {
           <form onSubmit={handleVerifyOTP} className="space-y-6 animate-fade-in">
             <div className="text-center py-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 mb-2">
               <p className="text-[11px] font-bold text-indigo-600">OTP Sent to {email}</p>
+              {demoOtp && (
+                <div className="mt-2 p-2 bg-pink-50 rounded-xl border border-pink-100 animate-pulse">
+                  <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest">Dev Mode - Use Code:</p>
+                  <p className="text-xl font-black text-pink-700">{demoOtp}</p>
+                  <p className="text-[9px] text-slate-400 font-bold mt-1">(Email service not configured in .env)</p>
+                </div>
+              )}
             </div>
             
             <div className="space-y-2">

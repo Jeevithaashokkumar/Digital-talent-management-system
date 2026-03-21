@@ -1,8 +1,11 @@
 const axios = require('axios');
+const nodemailer = require('nodemailer');
 
 const sendOTP = async (email, otp) => {
+    const isPlaceholder = !process.env.EMAIL_PASS || process.env.EMAIL_PASS === 'your-brevo-api-key';
+    
     const data = {
-        sender: { name: "DTMS Security", email: process.env.EMAIL_USER },
+        sender: { name: "DTMS Security", email: process.env.EMAIL_USER || "no-reply@dtms.com" },
         to: [{ email: email }],
         subject: "Your DTMS Login OTP",
         htmlContent: `
@@ -27,11 +30,52 @@ const sendOTP = async (email, otp) => {
         }
     };
 
+    // SMTP Method (Priority)
+    if (process.env.SMTP_HOST) {
+        try {
+            const transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: process.env.SMTP_PORT || 587,
+                secure: process.env.SMTP_SECURE === 'true',
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS
+                },
+                tls: {
+                    rejectUnauthorized: false
+                }
+            });
+
+            await transporter.sendMail({
+                from: `"DTMS Secure" <${process.env.SMTP_USER}>`,
+                to: email,
+                subject: "Your DTMS Login OTP",
+                html: data.htmlContent
+            });
+            console.log(`OTP Email sent via SMTP successfully to ${email}`);
+            return { success: true };
+        } catch (error) {
+            console.error('SMTP Error:', error.message);
+        }
+    }
+
+    if (otp === '123456' || isPlaceholder) {
+        console.log('-----------------------------------------');
+        console.log(`|  DEV/PLACEHOLDER OTP FOR ${email}: ${otp}  |`);
+        console.log('-----------------------------------------');
+        return { success: false, otp, message: isPlaceholder ? 'Email service not configured. OTP logged to console.' : 'Dev mode OTP.' };
+    }
+
     try {
         await axios.post('https://api.brevo.com/v3/smtp/email', data, config);
-        console.log('OTP Email sent via Brevo API successfully');
+        console.log(`OTP Email sent via Brevo API successfully to ${email}`);
+        return { success: true };
     } catch (error) {
-        throw new Error(error.response?.data?.message || error.message);
+        console.error('Brevo API Error (using console fallback):', error.response?.data?.message || error.message);
+        console.log('-----------------------------------------');
+        console.log(`|  FALLBACK OTP FOR ${email}: ${otp}  |`);
+        console.log('-----------------------------------------');
+        return { success: false, otp, error: error.response?.data?.message || error.message };
     }
 };
 
