@@ -1,9 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { getMessages, sendMessage } = require('../controllers/messageController');
+const { getMessages, sendMessage, editMessage, deleteMessage, togglePin, reactToMessage } = require('../controllers/messageController');
 const { verifyToken } = require('../middleware/auth');
 
 router.get('/', verifyToken, getMessages);
 router.post('/', verifyToken, sendMessage);
+router.put('/:id', verifyToken, editMessage);
+router.delete('/:id', verifyToken, deleteMessage);
+router.patch('/:id/pin', verifyToken, togglePin);
+router.post('/:id/react', verifyToken, reactToMessage);
 
 module.exports = router;

@@ -21,7 +21,7 @@ export default function MissionTableModule() {
       setLoading(true);
       const [mRes, uRes] = await Promise.all([
         api.get('/missions'),
-        api.get('/users')
+        api.get('/auth/users')
       ]);
       setMissions(mRes.data);
       setUsers(uRes.data);
@@ -232,7 +232,7 @@ export default function MissionTableModule() {
                 </div>
 
                 <div>
-                   <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] block mb-4">Assign Operators</label>
+                   <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] block mb-4">Assign Members</label>
                    <div className="flex flex-wrap gap-2">
                       {users.map(u => (
                          <button 

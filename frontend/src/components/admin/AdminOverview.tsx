@@ -9,7 +9,9 @@ import {
   Activity,
   ArrowUpRight,
   ArrowDownRight,
-  Briefcase
+  Briefcase,
+  Zap,
+  Shield
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -61,7 +63,7 @@ export default function AdminOverview({ stats }: AdminOverviewProps) {
            <div className="flex justify-between items-center mb-8">
               <div>
                 <h4 className="text-xl font-black text-white uppercase tracking-tighter">Elite Performance</h4>
-                <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest mt-1">Tasks completed by top operators.</p>
+                <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest mt-1">Tasks completed by top members.</p>
               </div>
               <Activity className="text-emerald-500 opacity-20" size={32} />
            </div>
@@ -74,6 +76,7 @@ export default function AdminOverview({ stats }: AdminOverviewProps) {
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
+                    tickFormatter={(name) => (name || 'User').replace(/OPERATOR|Operator/gi, 'User').trim()}
                     tick={{fill: 'rgba(255,255,255,0.3)', fontSize: 10, fontWeight: 900}} 
                   />
                   <YAxis hide />
@@ -126,6 +129,77 @@ export default function AdminOverview({ stats }: AdminOverviewProps) {
               Generate PDF Report <ArrowUpRight className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" size={16} />
            </button>
         </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        {/* Mission status distribution */}
+        <div className="bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl">
+           <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-8">Strategic Distribution</h4>
+           <div className="h-[300px] w-full relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.missionDistribution} layout="vertical">
+                  <XAxis type="number" hide />
+                  <YAxis 
+                    dataKey="status" 
+                    type="category" 
+                    axisLine={false} 
+                    tickLine={false}
+                    tick={{fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 900}}
+                    width={100}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#12141c', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' }}
+                  />
+                  <Bar dataKey="count" radius={[0, 10, 10, 0]}>
+                    {stats.missionDistribution?.map((entry: any, index: number) => {
+                      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+                      return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+           </div>
+        </div>
+
+        {/* Global Activity Feed */}
+        <div className="bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl">
+           <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-8">Global Pulse Feed</h4>
+           <div className="space-y-6 max-h-[300px] overflow-y-auto pr-4 custom-scrollbar">
+              {stats.activity?.map((act: any, i: number) => (
+                <div key={i} className="flex gap-4 items-start pb-6 border-b border-white/5 last:border-0">
+                   <div className={`p-2 rounded-xl bg-white/5 ${act.type === 'mission' ? 'text-emerald-400' : 'text-blue-400'}`}>
+                      {act.type === 'mission' ? <Target size={14} /> : <Briefcase size={14} />}
+                   </div>
+                   <div className="flex-1">
+                      <p className="text-xs font-black text-white uppercase tracking-tight">{act.title}</p>
+                      <p className="text-[10px] text-white/40 uppercase font-bold mt-1">
+                         <span className="text-indigo-400">{(act.user || 'User').replace(/OPERATOR|Operator/gi, 'User').trim()}</span> • {new Date(act.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                   </div>
+                   <div className="text-[8px] font-black text-white/20 uppercase tracking-widest">{act.type}</div>
+                </div>
+              ))}
+              {(!stats.activity || stats.activity.length === 0) && (
+                <div className="text-center py-10 opacity-20 italic">No recent system activity detected.</div>
+              )}
+           </div>
+        </div>
+      </div>
+
+      {/* Quick Action Panel */}
+      <div className="pt-8">
+         <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-6 italic">Command Center Quick Actions</h4>
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Broadcast Message', icon: <Zap size={14}/>, color: 'hover:bg-indigo-500/20 hover:text-indigo-400' },
+              { label: 'Register User', icon: <Users size={14}/>, color: 'hover:bg-blue-500/20 hover:text-blue-400' },
+              { label: 'Global Directive', icon: <Shield size={14}/>, color: 'hover:bg-rose-500/20 hover:text-rose-400' },
+              { label: 'System Lockdown', icon: <Clock size={14}/>, color: 'hover:bg-amber-500/20 hover:text-amber-400' },
+            ].map((btn, i) => (
+              <button key={i} className={`flex items-center justify-center gap-3 p-6 bg-white/5 border border-white/5 rounded-3xl text-white/40 font-black text-[10px] uppercase tracking-widest transition-all ${btn.color}`}>
+                 {btn.icon} {btn.label}
+              </button>
+            ))}
+         </div>
       </div>
     </div>
   );

@@ -10,8 +10,11 @@ import {
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBoardStore } from '@/store/useBoardStore';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function Navbar() {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const setActiveView = useBoardStore(state => state.setActiveView);
 
@@ -88,6 +91,7 @@ export default function Navbar() {
             </div>
           ))}
           
+          {isAdmin && (
           <div className="relative">
             <button 
               onClick={() => setActiveMenu(activeMenu === 'Create' ? null : 'Create')}
@@ -131,6 +135,7 @@ export default function Navbar() {
               )}
             </AnimatePresence>
           </div>
+          )}
         </div>
       </div>
 
@@ -155,9 +160,17 @@ export default function Navbar() {
           onClick={() => (window as any).addToast?.(`Accessing Knowledge Base`, 'info')}
           className="hover:bg-white/10 p-2.5 rounded-xl transition-all"
         ><Info size={24} className="text-slate-300" /></button>
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-[2px] cursor-pointer hover:rotate-6 hover:scale-110 transition-all shadow-xl shadow-indigo-500/20">
-          <div className="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center text-xs font-black">
-            JD
+        <div className="flex items-center gap-3 cursor-pointer group">
+          <div title={user?.name ? (user.name.replace(/OPERATOR|Operator/gi, 'User').trim() || user.name) : 'User'} className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-[2px] group-hover:rotate-6 group-hover:scale-110 transition-all shadow-xl shadow-indigo-500/20">
+            <div className="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center text-xs font-black">
+              {user?.name ? (user.name.replace(/OPERATOR|Operator/gi, 'User').trim() || 'User').substring(0, 2).toUpperCase() : 'US'}
+            </div>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-black text-white uppercase tracking-tight group-hover:text-indigo-400 transition-colors">
+              {user?.name ? user.name.replace(/OPERATOR|Operator/gi, 'User').trim() : 'System User'}
+            </span>
+            <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{user?.role || 'Operator'}</span>
           </div>
         </div>
       </div>

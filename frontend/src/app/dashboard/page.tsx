@@ -24,11 +24,21 @@ import UserOverview from '@/components/user/UserOverview';
 import ChatModule from '@/components/chat/ChatModule';
 import CallModule from '@/components/call/CallModule';
 import ToastContainer from '@/components/ui/ToastContainer';
+import MarketingHive from '@/components/spaces/MarketingHive';
+import GlobalOperations from '@/components/spaces/GlobalOperations';
+import ExecutiveOverlook from '@/components/dashboards/ExecutiveOverlook';
+import ResourceAllocation from '@/components/dashboards/ResourceAllocation';
 import { useBoardStore } from '@/store/useBoardStore';
 import api from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Plus, LayoutGrid, LayoutList, Settings, Users, Activity, Search, Bell, Info, Share, Zap, Filter, MoreHorizontal, CheckCircle2, Clock, Trash2, Edit2, Layout, Grid, Folder as FolderIcon, FileText, Monitor } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+
+import { useCallStore } from '@/store/useCallStore';
+import { io } from 'socket.io-client';
+import IncomingCallModal from '../../components/call/IncomingCallModal';
+
+let socket: any;
 
 export default function Dashboard() {
   const user = useAuthStore(state => state.user);
@@ -39,6 +49,8 @@ export default function Dashboard() {
   const loading = useBoardStore(state => state.loading);
   const activeView = useBoardStore(state => state.activeView);
   const setActiveView = useBoardStore(state => state.setActiveView);
+  
+  const callStore = useCallStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isAddingList, setIsAddingList] = useState(false);
   const [assetToCreate, setAssetToCreate] = useState<'Task' | 'Doc' | 'Folder' | 'Whiteboard' | null>(null);
@@ -51,6 +63,36 @@ export default function Dashboard() {
   const [adminStats, setAdminStats] = useState<any>({});
   const [userStats, setUserStats] = useState<any>({});
   const [toasts, setToasts] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+      (window as any).socket = socket;
+      socket.emit('join-chat', user.id);
+
+      socket.on('incoming-call', (data: any) => {
+        callStore.setReceivingCall(true, { id: data.from, name: data.name }, data.signal, data.type);
+        // Play sound if possible
+      });
+
+      socket.on('call-accepted', (data: any) => {
+        callStore.setCallAccepted(true, data.signal);
+      });
+
+      socket.on('call-rejected', () => {
+        addToast('Call rejected', 'error');
+        callStore.resetCall();
+      });
+
+      socket.on('call-ended', () => {
+        callStore.resetCall();
+      });
+    }
+
+    return () => {
+      socket?.disconnect();
+    };
+  }, [user, callStore]);
 
   const isAdmin = user?.role === 'admin';
 
@@ -192,6 +234,7 @@ export default function Dashboard() {
       </div>
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />
+      <IncomingCallModal />
       
       <Navbar />
       
@@ -245,6 +288,22 @@ export default function Dashboard() {
 
             {activeView === 'Folder' && (
               <FolderModule />
+            )}
+
+            {activeView === 'Marketing Hive' && (
+              <MarketingHive />
+            )}
+
+            {activeView === 'Global Operations' && (
+              <GlobalOperations />
+            )}
+
+            {activeView === 'Executive Overlook' && (
+              <ExecutiveOverlook />
+            )}
+
+            {activeView === 'Resource Allocation' && (
+              <ResourceAllocation />
             )}
 
             {activeView === 'admin-dashboard' && (

@@ -27,7 +27,8 @@ const missionRoutes = require('./routes/missions');
 const userRoutes = require('./routes/users');
 const analyticsRoutes = require('./routes/analytics');
 const messageRoutes = require('./routes/messages');
-
+const campaignsRoutes = require('./routes/campaigns');
+const operationsRoutes = require('./routes/operations');
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/boards', boardRoutes);
@@ -44,6 +45,8 @@ app.use('/api/missions', missionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/campaigns', campaignsRoutes);
+app.use('/api/operations', operationsRoutes);
 
 const path = require('path');
 const http = require('http');
@@ -73,10 +76,74 @@ io.on('connection', (socket) => {
   socket.on('send-message', (data) => {
     // data = { senderId, receiverId, content, senderName }
     if (data.receiverId) {
-      socket.to(data.receiverId).emit('receive-message', data);
+      // Send to both receiver and sender (to sync multiple tabs)
+      io.to(data.receiverId).to(data.senderId).emit('receive-message', data);
     } else {
-      socket.broadcast.emit('receive-message', data); // Team Chat
+      // Team Chat: Send to everyone
+      io.emit('receive-message', data);
     }
+  });
+
+  socket.on('edit-message', (data) => {
+    if (data.receiverId) {
+      io.to(data.receiverId).to(data.senderId).emit('message-edited', data);
+    } else {
+      io.emit('message-edited', data);
+    }
+  });
+
+  socket.on('delete-message', (data) => {
+    if (data.receiverId) {
+      io.to(data.receiverId).to(data.senderId).emit('message-deleted', data.id);
+    } else {
+      io.emit('message-deleted', data.id);
+    }
+  });
+
+  socket.on('pin-message', (data) => {
+    if (data.receiverId) {
+      io.to(data.receiverId).to(data.senderId).emit('message-pinned', data);
+    } else {
+      io.emit('message-pinned', data);
+    }
+  });
+
+  socket.on('react-message', (data) => {
+    if (data.receiverId) {
+      io.to(data.receiverId).to(data.senderId).emit('message-reacted', data);
+    } else {
+      io.emit('message-reacted', data);
+    }
+  });
+
+  socket.on('call-user', (data) => {
+    // data = { to, signal, from, name, type }
+    io.to(data.to).emit('incoming-call', { 
+      signal: data.signal, 
+      from: data.from, 
+      name: data.name, 
+      type: data.type 
+    });
+  });
+
+  socket.on('answer-call', (data) => {
+    // data = { to, signal }
+    io.to(data.to).emit('call-accepted', data.signal);
+  });
+
+  socket.on('reject-call', (data) => {
+    // data = { to }
+    io.to(data.to).emit('call-rejected');
+  });
+
+  socket.on('end-call', (data) => {
+    // data = { to }
+    io.to(data.to).emit('call-ended');
+  });
+
+  socket.on('ice-candidate', (data) => {
+    // data = { to, candidate }
+    io.to(data.to).emit('ice-candidate', data.candidate);
   });
 
   socket.on('canvas-update', (data) => {

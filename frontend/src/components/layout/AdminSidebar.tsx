@@ -27,7 +27,7 @@ export default function AdminSidebar() {
 
   const menuItems = [
     { id: 'admin-dashboard', label: 'Command Center', icon: <LayoutDashboard size={20} />, color: 'text-blue-400' },
-    { id: 'admin-users', label: 'Operator Matrix', icon: <Users size={20} />, color: 'text-emerald-400' },
+    { id: 'admin-users', label: 'User Matrix', icon: <Users size={20} />, color: 'text-emerald-400' },
     { id: 'admin-tasks', label: 'Global Directives', icon: <CheckSquare size={20} />, color: 'text-fuchsia-400' },
     { id: 'admin-missions', label: 'Strategic Goals', icon: <Target size={20} />, color: 'text-amber-400' },
     { id: 'admin-analytics', label: 'System Analytics', icon: <PieChart size={20} />, color: 'text-indigo-400' },
@@ -47,7 +47,7 @@ export default function AdminSidebar() {
         </div>
         <div>
            <h1 className="text-2xl font-black text-white tracking-tighter leading-none italic uppercase">DTMS <span className="text-blue-500 text-sm not-italic ml-1">ADMIN</span></h1>
-           <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mt-1">Nerve Center v4.0</p>
+           <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mt-1">User Center v4.0</p>
         </div>
       </div>
 
@@ -87,7 +87,7 @@ export default function AdminSidebar() {
             <div>
                <p className="text-[10px] font-black text-white uppercase tracking-tight leading-none mb-1">{user?.name}</p>
                <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest opacity-80 flex items-center gap-1">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Global Admin
+                   <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Global Admin
                </p>
             </div>
          </div>

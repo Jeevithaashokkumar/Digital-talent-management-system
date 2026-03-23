@@ -66,9 +66,9 @@ export default function AnalyticsModule({ stats }: { stats: any }) {
            </div>
         </div>
 
-        {/* Operator Productivity Bar */}
+        {/* User Productivity Bar */}
         <div className="lg:col-span-2 bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl">
-           <h4 className="text-lg font-black text-white uppercase tracking-tighter mb-8">Operator Efficiency</h4>
+           <h4 className="text-lg font-black text-white uppercase tracking-tighter mb-8">User Efficiency</h4>
            <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.productivity}>

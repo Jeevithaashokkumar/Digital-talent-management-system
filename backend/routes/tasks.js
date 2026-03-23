@@ -16,15 +16,15 @@ const {
 const { verifyToken, isAdmin } = require('../middleware/auth');
 
 // Task CRUD
-router.post('/', verifyToken, createTask);
+router.post('/', verifyToken, isAdmin, createTask);
 router.get('/', verifyToken, getAllTasks);
 router.get('/all', verifyToken, getAllTasks);
 router.get('/my', verifyToken, getMyTasks);
 router.get('/analytics', verifyToken, getAnalytics);
 router.get('/:id', verifyToken, getTaskById);
-router.put('/:id', verifyToken, updateTask);
+router.put('/:id', verifyToken, isAdmin, updateTask);
 router.patch('/:id/status', verifyToken, updateTaskStatus);
-router.delete('/:id', verifyToken, deleteTask);
+router.delete('/:id', verifyToken, isAdmin, deleteTask);
 
 // Subtask Routes
 router.post('/:taskId/subtasks', verifyToken, createSubTask);

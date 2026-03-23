@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import ForceGraph2D from 'react-force-graph-2d';
+import dynamic from 'next/dynamic';
+const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false });
 import { 
   Network, 
   Search, 
@@ -262,7 +263,7 @@ export default function KnowledgeGraphModule() {
                 ctx.fillText(node.type.toUpperCase(), node.x, node.y + (node.val/2 + 3));
               }
             }}
-            onNodeClick={(node) => setSelectedNode(node)}
+            onNodeClick={(node: any) => setSelectedNode(node as KNode)}
             backgroundColor="#0a0b10"
           />
         )}

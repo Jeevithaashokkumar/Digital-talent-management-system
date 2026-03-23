@@ -10,7 +10,10 @@ import {
   Layout,
   ArrowUpRight,
   ClipboardList,
-  Loader2
+  Loader2,
+  Shield,
+  FileText,
+  Share
 } from 'lucide-react';
 
 export default function UserOverview({ stats }: { stats: any }) {
@@ -100,7 +103,7 @@ export default function UserOverview({ stats }: { stats: any }) {
                   </div>
                   <div className="text-right">
                      <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Rank</p>
-                     <p className="text-xs font-black text-blue-400 uppercase">Lead Operator</p>
+                     <p className="text-xs font-black text-blue-400 uppercase">Lead User</p>
                   </div>
                </div>
                
@@ -115,6 +118,72 @@ export default function UserOverview({ stats }: { stats: any }) {
             <button className="w-full py-5 bg-white/5 hover:bg-indigo-500/20 border border-white/5 rounded-2xl text-white font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3">
                View Performance Logs <Layout size={16} />
             </button>
+         </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+         {/* Priority Directives (Upcoming Deadlines) */}
+         <div className="bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl">
+            <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-8 flex items-center gap-3">
+               <Shield className="text-rose-500" size={20} /> Priority Directives
+            </h4>
+            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-4 custom-scrollbar">
+               {stats.deadlines?.map((task: any, i: number) => (
+                 <div key={i} className="group p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex justify-between items-center hover:bg-white/5 transition-all">
+                    <div>
+                       <p className="text-xs font-black text-white uppercase tracking-tight mb-1">{task.title}</p>
+                       <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest flex items-center gap-2">
+                          <Clock size={10} /> {new Date(task.dueDate).toLocaleDateString()}
+                       </p>
+                    </div>
+                    <button className="p-2 opacity-0 group-hover:opacity-100 transition-all text-white/40 hover:text-white">
+                       <ArrowUpRight size={18} />
+                    </button>
+                 </div>
+               ))}
+               {(!stats.deadlines || stats.deadlines.length === 0) && (
+                 <div className="text-center py-10 opacity-20 italic">No urgent deadlines detected. Matrix stable.</div>
+               )}
+            </div>
+         </div>
+
+         {/* Neural Activity Feed (Recent personal activity) */}
+         <div className="bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl">
+            <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-8 flex items-center gap-3">
+               <Activity className="text-blue-400" size={20} /> Neural Activity Feed
+            </h4>
+            <div className="space-y-6 max-h-[300px] overflow-y-auto pr-4 custom-scrollbar">
+               {stats.activity?.map((act: any, i: number) => (
+                 <div key={i} className="flex gap-4 items-start pb-4 border-b border-white/5 last:border-0">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                    <div className="flex-1">
+                       <p className="text-xs font-black text-white/80 uppercase tracking-tight">{act.title}</p>
+                       <p className="text-[10px] text-white/30 uppercase font-bold mt-1">
+                          Status: <span className="text-indigo-400">{act.status}</span> • {new Date(act.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                       </p>
+                    </div>
+                 </div>
+               ))}
+               {(!stats.activity || stats.activity.length === 0) && (
+                 <div className="text-center py-10 opacity-20 italic">Awaiting tactical engagement logs.</div>
+               )}
+            </div>
+         </div>
+      </div>
+
+      {/* User Actions */}
+      <div className="pt-8 mb-8">
+         <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-6 italic">Tactical User Actions</h4>
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Submit Log', icon: <FileText size={14}/>, color: 'hover:bg-indigo-500/20 hover:text-indigo-400' },
+              { label: 'Request Sync', icon: <Zap size={14}/>, color: 'hover:bg-amber-500/20 hover:text-amber-400' },
+              { label: 'Share Signal', icon: <Share size={14}/>, color: 'hover:bg-emerald-500/20 hover:text-emerald-400' },
+              { label: 'Emergency Exit', icon: <Clock size={14}/>, color: 'hover:bg-rose-500/20 hover:text-rose-400' },
+            ].map((btn, i) => (
+              <button key={i} className={`flex items-center justify-center gap-3 p-6 bg-white/5 border border-white/5 rounded-3xl text-white/40 font-black text-[10px] uppercase tracking-widest transition-all ${btn.color}`}>
+                 {btn.icon} {btn.label}
+              </button>
+            ))}
          </div>
       </div>
     </div>

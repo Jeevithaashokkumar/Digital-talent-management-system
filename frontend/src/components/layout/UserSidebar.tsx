@@ -47,7 +47,7 @@ export default function UserSidebar({ onToggleSidebar, isOpen }: any) {
         {isOpen && (
           <div className="animate-in fade-in slide-in-from-left-4 duration-500">
              <h1 className="text-2xl font-black text-white tracking-tighter leading-none italic uppercase">DTMS <span className="text-emerald-500 text-[10px] not-italic ml-1 tracking-[0.2em]">MATRIX</span></h1>
-             <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mt-1">Operator v4.0</p>
+             <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mt-1">User v4.0</p>
           </div>
         )}
       </div>
@@ -88,7 +88,7 @@ export default function UserSidebar({ onToggleSidebar, isOpen }: any) {
               </div>
               <div>
                  <p className="text-[10px] font-black text-white uppercase tracking-tight leading-none mb-1">{user?.name}</p>
-                 <p className="text-[8px] font-bold text-blue-400 uppercase tracking-[0.2em] opacity-80">Matrix Operator</p>
+                 <p className="text-[8px] font-bold text-blue-400 uppercase tracking-[0.2em] opacity-80">Matrix User</p>
               </div>
            </div>
          )}

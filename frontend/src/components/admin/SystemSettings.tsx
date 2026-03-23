@@ -91,7 +91,7 @@ export default function SystemSettings() {
                  <div className="flex justify-between items-start relative z-10">
                     <div>
                        <h5 className="text-white font-black uppercase tracking-tight">Auto-Assign Protocol</h5>
-                       <p className="text-white/40 text-[10px] font-bold mt-1 uppercase tracking-widest">Assign tasks to idle operators automatically.</p>
+                       <p className="text-white/40 text-[10px] font-bold mt-1 uppercase tracking-widest">Assign tasks to idle members automatically.</p>
                     </div>
                     <button onClick={() => setAutomation(a => ({...a, autoAssign: !a.autoAssign}))}>
                        {automation.autoAssign ? <ToggleRight className="text-blue-500" size={32} /> : <ToggleLeft className="text-white/20" size={32} />}

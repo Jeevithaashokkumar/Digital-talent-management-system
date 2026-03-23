@@ -139,13 +139,21 @@ const updateTaskStatus = async (req, res) => {
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ error: 'Invalid status. Must be: todo, in-progress, done' });
         }
-        const task = await prisma.task.update({
+
+        const task = await prisma.task.findUnique({ where: { id } });
+        if (!task) return res.status(404).json({ error: 'Task not found' });
+
+        if (req.user.role !== 'admin' && task.assignedTo !== req.user.id) {
+            return res.status(403).json({ error: 'Access denied. You can only update tasks assigned to you.' });
+        }
+
+        const updatedTask = await prisma.task.update({
             where: { id },
             data: { status },
             include: { assignee: { select: { id: true, name: true, email: true } } }
         });
-        task.labels = task.labels ? task.labels.split(',').filter(Boolean) : [];
-        res.json(task);
+        updatedTask.labels = updatedTask.labels ? updatedTask.labels.split(',').filter(Boolean) : [];
+        res.json(updatedTask);
     } catch (error) {
         res.status(400).json({ error: error.message });
     }

@@ -84,7 +84,7 @@ export default function UserManagement() {
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-4xl font-black text-white tracking-tighter flex items-center gap-3">
-            <Users size={36} className="text-blue-500" /> Operator Matrix
+            <Users size={36} className="text-blue-500" /> User Matrix
           </h2>
           <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mt-2 ml-1">Manage personnel access and system directives.</p>
         </div>
@@ -93,7 +93,7 @@ export default function UserManagement() {
           <div className="relative">
              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
              <input 
-               placeholder="Search Operators..."
+               placeholder="Search Users..."
                value={searchTerm}
                onChange={e => setSearchTerm(e.target.value)}
                className="bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-6 text-white text-sm outline-none focus:border-blue-500/50 transition-all w-64"
@@ -103,7 +103,7 @@ export default function UserManagement() {
             onClick={() => setShowModal(true)}
             className="bg-blue-500 hover:bg-blue-400 text-white px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 transition-all shadow-2xl shadow-blue-500/20"
           >
-            <UserPlus size={18} /> Add Operator
+            <UserPlus size={18} /> Add User
           </button>
         </div>
       </div>
@@ -112,7 +112,7 @@ export default function UserManagement() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-white/5">
-              <th className="px-8 py-6 text-[10px] font-black text-white/30 uppercase tracking-widest">Operator</th>
+              <th className="px-8 py-6 text-[10px] font-black text-white/30 uppercase tracking-widest">User</th>
               <th className="px-8 py-6 text-[10px] font-black text-white/30 uppercase tracking-widest">Role</th>
               <th className="px-8 py-6 text-[10px] font-black text-white/30 uppercase tracking-widest">Status</th>
               <th className="px-8 py-6 text-[10px] font-black text-white/30 uppercase tracking-widest">Joined</th>
@@ -125,10 +125,10 @@ export default function UserManagement() {
                 <td className="px-8 py-6">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-fuchsia-500/20 flex items-center justify-center text-blue-400 font-black text-xs border border-white/5">
-                      {user.name.charAt(0).toUpperCase()}
+                      {(user.name.replace(/OPERATOR|Operator/gi, 'User').trim() || user.name).charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-black text-white tracking-tight">{user.name}</p>
+                      <p className="font-black text-white tracking-tight">{user.name.replace(/OPERATOR|Operator/gi, 'User').trim() || user.name}</p>
                       <p className="text-[10px] text-white/30 font-bold">{user.email}</p>
                     </div>
                   </div>
@@ -186,7 +186,7 @@ export default function UserManagement() {
            <div className="bg-[#12141c] border border-white/10 rounded-[2.5rem] w-full max-w-xl p-10 animate-in zoom-in-95 duration-200">
              <div className="flex justify-between items-center mb-8">
                 <h3 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
-                   <UserPlus size={24} className="text-blue-500" /> New System Operator
+                   <UserPlus size={24} className="text-blue-500" /> New System User
                 </h3>
                 <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white/5 rounded-xl text-white/40 transition-all"><X size={20}/></button>
              </div>
@@ -195,7 +195,7 @@ export default function UserManagement() {
                 <div>
                   <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] block mb-2 px-1">Full Name</label>
                   <input 
-                    placeholder="Enter operator name..."
+                    placeholder="Enter user name..."
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white outline-none focus:border-blue-500/50 transition-all"
@@ -205,7 +205,7 @@ export default function UserManagement() {
                   <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] block mb-2 px-1">Email Address</label>
                   <input 
                     type="email"
-                    placeholder="operator@system.com"
+                    placeholder="user@system.com"
                     value={formData.email}
                     onChange={e => setFormData({...formData, email: e.target.value})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white outline-none focus:border-blue-500/50 transition-all"

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Plus, Filter, X, Tag, Calendar, User, AlertCircle, CheckCircle2, Clock, Trash2, Edit2, Flag } from 'lucide-react';
 import api from '@/services/api';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const COLUMNS = [
   { id: 'todo', title: 'To Do', color: 'bg-slate-500', glow: 'shadow-slate-500/20', dot: 'bg-slate-400' },
@@ -18,6 +19,8 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string
 };
 
 export default function TaskKanbanBoard() {
+  const { user: authUser } = useAuthStore();
+  const isAdmin = authUser?.role === 'admin';
   const [tasks, setTasks] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,12 +151,14 @@ export default function TaskKanbanBoard() {
             <option value="medium" className="bg-[#1e202e]">🟡 Medium</option>
             <option value="low" className="bg-[#1e202e]">🟢 Low</option>
           </select>
-          <button
-            onClick={() => openCreate()}
-            className="bg-indigo-500 hover:bg-indigo-400 px-5 py-2 rounded-xl text-white font-bold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
-          >
-            <Plus size={18} /> New Task
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => openCreate()}
+              className="bg-indigo-500 hover:bg-indigo-400 px-5 py-2 rounded-xl text-white font-bold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+            >
+              <Plus size={18} /> New Task
+            </button>
+          )}
         </div>
       </div>
 
@@ -174,12 +179,14 @@ export default function TaskKanbanBoard() {
                         {colTasks.length}
                       </span>
                     </div>
-                    <button
-                      onClick={() => openCreate(col.id)}
-                      className="text-white/30 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all"
-                    >
-                      <Plus size={16} />
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => openCreate(col.id)}
+                        className="text-white/30 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Droppable Area */}
@@ -215,14 +222,16 @@ export default function TaskKanbanBoard() {
                                       <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${pc.bg} ${pc.color}`}>
                                         {pc.label}
                                       </span>
-                                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => openEdit(task)} className="text-white/40 hover:text-indigo-400 p-1 rounded-lg hover:bg-white/10 transition-all">
-                                          <Edit2 size={13} />
-                                        </button>
-                                        <button onClick={() => handleDelete(task.id)} className="text-white/40 hover:text-rose-400 p-1 rounded-lg hover:bg-white/10 transition-all">
-                                          <Trash2 size={13} />
-                                        </button>
-                                      </div>
+                                      {isAdmin && (
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button onClick={() => openEdit(task)} className="text-white/40 hover:text-indigo-400 p-1 rounded-lg hover:bg-white/10 transition-all">
+                                            <Edit2 size={13} />
+                                          </button>
+                                          <button onClick={() => handleDelete(task.id)} className="text-white/40 hover:text-rose-400 p-1 rounded-lg hover:bg-white/10 transition-all">
+                                            <Trash2 size={13} />
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
 
                                     {/* Title */}
@@ -260,8 +269,8 @@ export default function TaskKanbanBoard() {
                                       ) : <span />}
 
                                       {task.assignee ? (
-                                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-[10px] font-black text-white shadow-lg" title={task.assignee.name}>
-                                          {task.assignee.name.substring(0, 2).toUpperCase()}
+                                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-[10px] font-black text-white shadow-lg" title={(task.assignee.name || 'User').replace(/OPERATOR|Operator/gi, 'User').trim()}>
+                                          {((task.assignee.name || 'User').replace(/OPERATOR|Operator/gi, 'User').trim() || 'U').substring(0, 2).toUpperCase()}
                                         </div>
                                       ) : (
                                         <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center" title="Unassigned">
