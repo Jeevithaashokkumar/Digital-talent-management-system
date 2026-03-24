@@ -4,7 +4,7 @@ const { getUsers, createUser, updateUser, deleteUser } = require('../controllers
 const { verifyToken } = require('../middleware/auth');
 const { verifyAdmin } = require('../middleware/role');
 
-router.get('/', verifyToken, verifyAdmin, getUsers);
+router.get('/', verifyToken, getUsers);
 router.post('/', verifyToken, verifyAdmin, createUser);
 router.put('/:id', verifyToken, verifyAdmin, updateUser);
 router.delete('/:id', verifyToken, verifyAdmin, deleteUser);

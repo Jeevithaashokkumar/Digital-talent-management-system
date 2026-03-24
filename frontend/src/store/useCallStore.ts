@@ -5,15 +5,13 @@ interface CallState {
   isReceivingCall: boolean;
   isInCall: boolean;
   callAccepted: boolean;
-  caller: any; // { id, name }
+  caller: { id: string, name: string } | null;
   callType: 'voice' | 'video' | null;
-  remoteSignal: any;
-  
-  // Actions
-  setCalling: (isCalling: boolean, caller?: any, type?: 'voice' | 'video') => void;
-  setReceivingCall: (isReceivingCall: boolean, caller?: any, signal?: any, type?: 'voice' | 'video') => void;
-  setCallAccepted: (accepted: boolean, signal?: any) => void;
+  remoteSignal: any | null;
+  setCalling: (isCalling: boolean, caller: { id: string, name: string } | null, type?: 'voice' | 'video') => void;
+  setReceivingCall: (isReceivingCall: boolean, caller: { id: string, name: string } | null, signal: any, type: 'voice' | 'video') => void;
   setInCall: (isInCall: boolean) => void;
+  setCallAccepted: (callAccepted: boolean) => void;
   resetCall: () => void;
 }
 
@@ -26,18 +24,39 @@ export const useCallStore = create<CallState>((set) => ({
   callType: null,
   remoteSignal: null,
 
-  setCalling: (isCalling, caller = null, type = 'voice') => 
-    set({ isCalling, caller, callType: type }),
-    
-  setReceivingCall: (isReceivingCall, caller = null, signal = null, type = 'voice') => 
-    set({ isReceivingCall, caller, remoteSignal: signal, callType: type }),
+  setCalling: (isCalling, caller, type = 'voice') => set({ 
+    isCalling, 
+    caller, 
+    callType: type,
+    isReceivingCall: false,
+    isInCall: false,
+    callAccepted: false
+  }),
 
-  setCallAccepted: (accepted, signal = null) => 
-    set({ callAccepted: accepted, remoteSignal: signal || useCallStore.getState().remoteSignal }),
-    
-  setInCall: (isInCall) => 
-    set({ isInCall, isCalling: false, isReceivingCall: false, callAccepted: true }),
-    
-  resetCall: () => 
-    set({ isCalling: false, isReceivingCall: false, isInCall: false, caller: null, remoteSignal: null, callType: null }),
+  setReceivingCall: (isReceivingCall, caller, signal, type) => set({
+    isReceivingCall,
+    caller,
+    remoteSignal: signal,
+    callType: type,
+    isCalling: false,
+    isInCall: false,
+    callAccepted: false
+  }),
+
+  setInCall: (isInCall) => set({ isInCall }),
+  
+  setCallAccepted: (callAccepted: boolean, signal?: any) => set((state) => ({ 
+    callAccepted, 
+    remoteSignal: signal !== undefined ? signal : state.remoteSignal 
+  })),
+
+  resetCall: () => set({
+    isCalling: false,
+    isReceivingCall: false,
+    isInCall: false,
+    callAccepted: false,
+    caller: null,
+    callType: null,
+    remoteSignal: null
+  })
 }));

@@ -414,7 +414,7 @@ export default function ChatModule() {
               x={contextMenu.x} 
               y={contextMenu.y} 
               onClose={() => setContextMenu(null)}
-              onAction={(action) => handleAction(action, contextMenu.msg)}
+              onAction={(action: string) => handleAction(action, contextMenu.msg)}
               isMine={contextMenu.msg.senderId === user?.id}
             />
           )}

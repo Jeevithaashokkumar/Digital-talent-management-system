@@ -24,10 +24,7 @@ import UserOverview from '@/components/user/UserOverview';
 import ChatModule from '@/components/chat/ChatModule';
 import CallModule from '@/components/call/CallModule';
 import ToastContainer from '@/components/ui/ToastContainer';
-import MarketingHive from '@/components/spaces/MarketingHive';
-import GlobalOperations from '@/components/spaces/GlobalOperations';
-import ExecutiveOverlook from '@/components/dashboards/ExecutiveOverlook';
-import ResourceAllocation from '@/components/dashboards/ResourceAllocation';
+// Zombie components removed to restore build stability
 import { useBoardStore } from '@/store/useBoardStore';
 import api from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -36,7 +33,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { useCallStore } from '@/store/useCallStore';
 import { io } from 'socket.io-client';
-import IncomingCallModal from '../../components/call/IncomingCallModal';
+import IncomingCallModal from '@/components/call/IncomingCallModal';
 
 let socket: any;
 
@@ -290,21 +287,7 @@ export default function Dashboard() {
               <FolderModule />
             )}
 
-            {activeView === 'Marketing Hive' && (
-              <MarketingHive />
-            )}
-
-            {activeView === 'Global Operations' && (
-              <GlobalOperations />
-            )}
-
-            {activeView === 'Executive Overlook' && (
-              <ExecutiveOverlook />
-            )}
-
-            {activeView === 'Resource Allocation' && (
-              <ResourceAllocation />
-            )}
+            {/* Missing modules pruned */}
 
             {activeView === 'admin-dashboard' && (
               <AdminOverview stats={adminStats} />
@@ -346,31 +329,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {activeView === 'Global Operations' && (
-              <div className="p-10 flex flex-col gap-8 h-full overflow-y-auto custom-scrollbar">
-                <h2 className="text-4xl font-black text-white tracking-tighter">Global Operations Nexus</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   {[
-                     { node: 'EMEA Nexus', load: '82%', latency: '12ms', status: 'Optimal' },
-                     { node: 'APAC Matrix', load: '45%', latency: '28ms', status: 'Optimal' }
-                   ].map(node => (
-                     <div key={node.node} className="bg-indigo-500/5 border border-indigo-500/20 p-8 rounded-3xl group hover:bg-indigo-500/10 transition-all">
-                        <div className="flex justify-between items-center mb-6">
-                           <span className="text-lg font-black text-white">{node.node}</span>
-                           <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">{node.status}</span>
-                        </div>
-                        <div className="space-y-4">
-                           <div className="flex justify-between text-xs font-black uppercase text-white/40"><span>Throughput</span> <span>{node.load}</span></div>
-                           <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                              <div className="h-full bg-indigo-500 w-[82%]"></div>
-                           </div>
-                           <div className="text-[10px] font-black uppercase text-indigo-400">Response: {node.latency}</div>
-                        </div>
-                     </div>
-                   ))}
-                </div>
-              </div>
-            )}
+            {/* Redundant Global Operations view pruned */}
 
             {activeView === 'Mission Table' && (
               <div className="p-10 flex flex-col gap-8 h-full overflow-y-auto custom-scrollbar">
@@ -465,6 +424,7 @@ export default function Dashboard() {
           background: rgba(99, 102, 241, 0.5);
         }
       `}</style>
+      <IncomingCallModal />
     </div>
   );
 }

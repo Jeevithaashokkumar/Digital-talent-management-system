@@ -42,28 +42,6 @@ const getUserStats = async (req, res) => {
             if (dayObj) dayObj.count++;
         });
 
-        // Upcoming Deadlines (Due within next 48 hours)
-        const in48Hours = new Date();
-        in48Hours.setHours(in48Hours.getHours() + 48);
-        
-        const deadlines = await prisma.task.findMany({
-            where: {
-                assignedTo: userId,
-                status: { notIn: ['completed', 'done'] },
-                dueDate: { lte: in48Hours, gte: new Date() }
-            },
-            take: 5,
-            orderBy: { dueDate: 'asc' }
-        });
-
-        // Recent Personal Activity
-        const personalActivity = await prisma.task.findMany({
-            where: { assignedTo: userId },
-            take: 8,
-            orderBy: { updatedAt: 'desc' },
-            select: { title: true, status: true, updatedAt: true }
-        });
-
         res.json({
             cards: {
                 totalTasks,
@@ -73,9 +51,7 @@ const getUserStats = async (req, res) => {
                 activeMissions
             },
             trend,
-            completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
-            deadlines: deadlines.map(d => ({ id: d.id, title: d.title, dueDate: d.dueDate })),
-            activity: personalActivity.map(a => ({ title: a.title, status: a.status, time: a.updatedAt }))
+            completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
         });
     } catch (error) {
         res.status(500).json({ error: error.message });

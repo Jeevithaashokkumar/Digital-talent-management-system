@@ -30,98 +30,145 @@ export default function CallModule() {
     return () => clearInterval(timer);
   }, [isInCall]);
 
+  // --- Dedicated Signaling Effect (fires immediately on call initiation) ---
   useEffect(() => {
-    const initCall = async () => {
-      const socket = (window as any).socket;
-      if (!socket || !user) return;
+    const socket = (window as any).socket;
+    if (!socket || !user || !isCalling || !caller) return;
 
-      // 1. Get Local Stream
+    // Immediately notify the remote user BEFORE opening WebRTC
+    const sendOffer = async () => {
       try {
+        pc.current = new RTCPeerConnection({
+          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: callType === 'video',
           audio: true
         });
         localStreamRef.current = stream;
         if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-        
-        // 2. Initialize PeerConnection
-        pc.current = new RTCPeerConnection({
-          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        });
 
-        // Add tracks
-        stream.getTracks().forEach(track => {
-          pc.current?.addTrack(track, stream);
-        });
+        stream.getTracks().forEach(track => pc.current?.addTrack(track, stream));
 
-        // Handle remote stream
         pc.current.ontrack = (event) => {
           setRemoteStream(event.streams[0]);
           if (remoteVideoRef.current) remoteVideoRef.current.srcObject = event.streams[0];
         };
 
-        // Handle ICE candidates
         pc.current.onicecandidate = (event) => {
           if (event.candidate && caller) {
             socket.emit('ice-candidate', { to: caller.id, candidate: event.candidate });
           }
         };
 
-        // 3. Signaling logic
-        if (isCalling && caller) {
-          const offer = await pc.current.createOffer();
-          await pc.current.setLocalDescription(offer);
-          socket.emit('call-user', { 
-            to: caller.id, 
-            signal: offer, 
-            from: user.id, 
-            name: user.name, 
-            type: callType 
-          });
-        } else if (isReceivingCall && remoteSignal) {
-          await pc.current.setRemoteDescription(new RTCSessionDescription(remoteSignal));
-          const answer = await pc.current.createAnswer();
-          await pc.current.setLocalDescription(answer);
-          socket.emit('answer-call', { to: caller.id, signal: answer });
-          setInCall(true); // Officially in call now
-        }
+        const offer = await pc.current.createOffer();
+        await pc.current.setLocalDescription(offer);
 
-        // Listen for accepted/rejected/ice
+        socket.emit('call-user', {
+          to: caller.id,
+          signal: offer,
+          from: user.id,
+          name: user.name,
+          type: callType
+        });
+
         socket.on('call-accepted', async (signal: any) => {
-           if (pc.current) {
-              await pc.current.setRemoteDescription(new RTCSessionDescription(signal));
-              setInCall(true);
-           }
+          if (pc.current) {
+            await pc.current.setRemoteDescription(new RTCSessionDescription(signal));
+            setInCall(true);
+          }
         });
 
         socket.on('ice-candidate', async (candidate: any) => {
-           if (pc.current && candidate) {
-              try {
-                await pc.current.addIceCandidate(new RTCIceCandidate(candidate));
-              } catch (e) { console.error('Error adding ICE candidate', e); }
-           }
+          if (pc.current && candidate) {
+            try { await pc.current.addIceCandidate(new RTCIceCandidate(candidate)); }
+            catch (e) { console.error('ICE error', e); }
+          }
         });
 
+        socket.on('call-rejected', () => resetCall());
+        socket.on('call-ended', () => resetCall());
+
       } catch (err) {
-        console.error('Failed to get media devices or init connection', err);
+        console.error('Call initiation failed', err);
         resetCall();
       }
     };
 
-    if (isCalling || isReceivingCall) {
-       initCall();
-    }
+    sendOffer();
 
     return () => {
-       const socket = (window as any).socket;
-       socket?.emit('end-call', { to: caller?.id });
-       socket?.off('call-accepted');
-       socket?.off('ice-candidate');
-       localStreamRef.current?.getTracks().forEach(t => t.stop());
-       pc.current?.close();
-       pc.current = null;
+      socket.off('call-accepted');
+      socket.off('call-rejected');
+      socket.off('call-ended');
+      socket.off('ice-candidate');
+      localStreamRef.current?.getTracks().forEach(t => t.stop());
+      pc.current?.close();
+      pc.current = null;
     };
-  }, [isCalling, isReceivingCall]); // Initial trigger
+  }, [isCalling]);
+
+  // --- Answer Effect (callee side, triggered when Call view is entered after accepting) ---
+  useEffect(() => {
+    const socket = (window as any).socket;
+    if (!socket || !user || !isReceivingCall || !remoteSignal || !caller) return;
+
+    const sendAnswer = async () => {
+      try {
+        pc.current = new RTCPeerConnection({
+          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: callType === 'video',
+          audio: true
+        });
+        localStreamRef.current = stream;
+        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+        stream.getTracks().forEach(track => pc.current?.addTrack(track, stream));
+
+        pc.current.ontrack = (event) => {
+          setRemoteStream(event.streams[0]);
+          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = event.streams[0];
+        };
+
+        pc.current.onicecandidate = (event) => {
+          if (event.candidate && caller) {
+            socket.emit('ice-candidate', { to: caller.id, candidate: event.candidate });
+          }
+        };
+
+        await pc.current.setRemoteDescription(new RTCSessionDescription(remoteSignal));
+        const answer = await pc.current.createAnswer();
+        await pc.current.setLocalDescription(answer);
+        socket.emit('answer-call', { to: caller.id, signal: answer });
+        setInCall(true);
+
+        socket.on('ice-candidate', async (candidate: any) => {
+          if (pc.current && candidate) {
+            try { await pc.current.addIceCandidate(new RTCIceCandidate(candidate)); }
+            catch (e) { console.error('ICE error', e); }
+          }
+        });
+
+        socket.on('call-ended', () => resetCall());
+      } catch (err) {
+        console.error('Answer failed', err);
+        resetCall();
+      }
+    };
+
+    sendAnswer();
+
+    return () => {
+      socket.off('ice-candidate');
+      socket.off('call-ended');
+      localStreamRef.current?.getTracks().forEach(t => t.stop());
+      pc.current?.close();
+      pc.current = null;
+    };
+  }, [isReceivingCall]);
 
   const formatTime = (s: number) => {
     const mins = Math.floor(s / 60);

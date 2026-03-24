@@ -4,52 +4,52 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id               String          @id @default(uuid())
-  name             String
-  email            String          @unique
-  password         String
-  role             String          @default("user")
-  status           String          @default("active")
-  otp              String?
-  otpExpires       DateTime?
-  createdAt        DateTime        @default(now())
+  id         String    @id @default(uuid())
+  name       String
+  email      String    @unique
+  password   String
+  role       String    @default("user") // "user" or "admin"
+  status     String    @default("active") // "active" or "inactive"
+  otp        String?
+  otpExpires DateTime?
+  createdAt  DateTime  @default(now())
+
   boards           Board[]         @relation("UserBoards")
-  docs             Doc[]           @relation("UserDocs")
-  files            File[]          @relation("UserFiles")
-  folders          Folder[]        @relation("UserFolders")
-  knowledgeNodes   KnowledgeNode[] @relation("UserKnowledgeNodes")
-  receivedMessages Message[]       @relation("ReceivedMessages")
-  sentMessages     Message[]       @relation("SentMessages")
-  missions         Mission[]       @relation("UserMissions")
-  neuralGraphs     NeuralGraph[]   @relation("UserNeuralGraphs")
-  neuralNodes      NeuralNode[]    @relation("UserNeuralNodes")
-  reactions        Reaction[]
-  createdTasks     Task[]          @relation("AdminTasks")
   assignedTasks    Task[]          @relation("UserTasks")
+  createdTasks     Task[]          @relation("AdminTasks")
+  folders          Folder[]        @relation("UserFolders")
+  docs             Doc[]           @relation("UserDocs")
   whiteboards      Whiteboard[]    @relation("UserWhiteboards")
-  campaigns        Campaign[]      @relation("UserCampaigns")
-  operations       Operation[]     @relation("UserOperations")
+  files            File[]          @relation("UserFiles")
+  neuralNodes      NeuralNode[]    @relation("UserNeuralNodes")
+  neuralGraphs     NeuralGraph[]   @relation("UserNeuralGraphs")
+  knowledgeNodes   KnowledgeNode[] @relation("UserKnowledgeNodes")
+  missions         Mission[]       @relation("UserMissions")
+  sentMessages     Message[]       @relation("SentMessages")
+  receivedMessages Message[]       @relation("ReceivedMessages")
+  reactions        Reaction[]
 }
 
 model Message {
-  id         String     @id @default(uuid())
+  id         String   @id @default(uuid())
   content    String
   senderId   String
-  receiverId String?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  isPinned   Boolean    @default(false)
+  receiverId String? // Null for team chat (broadcast)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  isPinned   Boolean  @default(false)
   replyToId  String?
-  replyTo    Message?   @relation("MessageReplies", fields: [replyToId], references: [id])
-  replies    Message[]  @relation("MessageReplies")
-  receiver   User?      @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  sender     User       @relation("SentMessages", fields: [senderId], references: [id])
-  reactions  Reaction[]
+
+  sender    User       @relation("SentMessages", fields: [senderId], references: [id])
+  receiver  User?      @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  replyTo   Message?   @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies   Message[]  @relation("MessageReplies")
+  reactions Reaction[]
 }
 
 model Reaction {
@@ -57,8 +57,8 @@ model Reaction {
   emoji     String
   userId    String
   messageId String
-  message   Message @relation(fields: [messageId], references: [id])
   user      User    @relation(fields: [userId], references: [id])
+  message   Message @relation(fields: [messageId], references: [id])
 }
 
 model Board {
@@ -67,9 +67,10 @@ model Board {
   description String?
   createdBy   String
   createdAt   DateTime @default(now())
-  creator     User     @relation("UserBoards", fields: [createdBy], references: [id])
-  lists       List[]
-  tasks       Task[]
+
+  creator User   @relation("UserBoards", fields: [createdBy], references: [id])
+  lists   List[]
+  tasks   Task[]
 }
 
 model List {
@@ -78,32 +79,35 @@ model List {
   order     Int      @default(0)
   boardId   String
   createdAt DateTime @default(now())
-  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  tasks     Task[]
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks Task[]
 }
 
 model Task {
   id          String    @id @default(uuid())
   title       String
   description String?
-  status      String    @default("todo")
-  priority    String    @default("medium")
+  status      String    @default("todo") // "todo", "in-progress", "done"
+  priority    String    @default("medium") // "low", "medium", "high"
   order       Int       @default(0)
   dueDate     DateTime?
-  labels      String    @default("")
-  listId      String?
-  boardId     String?
-  folderId    String?
-  assignedTo  String?
-  createdBy   String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  subTasks    SubTask[]
-  creator     User      @relation("AdminTasks", fields: [createdBy], references: [id])
-  assignee    User?     @relation("UserTasks", fields: [assignedTo], references: [id])
-  folder      Folder?   @relation(fields: [folderId], references: [id])
-  board       Board?    @relation(fields: [boardId], references: [id])
-  list        List?     @relation(fields: [listId], references: [id])
+  labels      String    @default("") // Comma-separated tags
+
+  listId     String?
+  boardId    String?
+  folderId   String?
+  assignedTo String?
+  createdBy  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  list     List?     @relation(fields: [listId], references: [id])
+  board    Board?    @relation(fields: [boardId], references: [id])
+  folder   Folder?   @relation(fields: [folderId], references: [id])
+  subTasks SubTask[]
+  assignee User?     @relation("UserTasks", fields: [assignedTo], references: [id])
+  creator  User      @relation("AdminTasks", fields: [createdBy], references: [id])
 }
 
 model SubTask {
@@ -115,18 +119,19 @@ model SubTask {
 }
 
 model Folder {
-  id             String       @id @default(uuid())
+  id             String   @id @default(uuid())
   name           String
   parentFolderId String?
   createdBy      String
-  createdAt      DateTime     @default(now())
-  docs           Doc[]
-  files          File[]
-  creator        User         @relation("UserFolders", fields: [createdBy], references: [id])
-  parent         Folder?      @relation("FolderHierarchy", fields: [parentFolderId], references: [id])
-  subFolders     Folder[]     @relation("FolderHierarchy")
-  tasks          Task[]
-  whiteboards    Whiteboard[]
+  createdAt      DateTime @default(now())
+
+  parent      Folder?      @relation("FolderHierarchy", fields: [parentFolderId], references: [id])
+  subFolders  Folder[]     @relation("FolderHierarchy")
+  creator     User         @relation("UserFolders", fields: [createdBy], references: [id])
+  tasks       Task[]
+  docs        Doc[]
+  whiteboards Whiteboard[]
+  files       File[]
 }
 
 model Doc {
@@ -139,20 +144,22 @@ model Doc {
   version      Int      @default(1)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  creator      User     @relation("UserDocs", fields: [createdBy], references: [id])
-  folder       Folder?  @relation(fields: [folderId], references: [id])
+
+  folder  Folder? @relation(fields: [folderId], references: [id])
+  creator User    @relation("UserDocs", fields: [createdBy], references: [id])
 }
 
 model Whiteboard {
   id        String   @id @default(uuid())
   title     String
-  data      String?
+  data      String? 
   folderId  String?
   createdBy String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  creator   User     @relation("UserWhiteboards", fields: [createdBy], references: [id])
-  folder    Folder?  @relation(fields: [folderId], references: [id])
+
+  folder  Folder? @relation(fields: [folderId], references: [id])
+  creator User    @relation("UserWhiteboards", fields: [createdBy], references: [id])
 }
 
 model File {
@@ -166,25 +173,27 @@ model File {
   folderId     String?
   uploadedBy   String
   createdAt    DateTime @default(now())
-  uploader     User     @relation("UserFiles", fields: [uploadedBy], references: [id])
-  folder       Folder?  @relation(fields: [folderId], references: [id])
+
+  folder   Folder? @relation(fields: [folderId], references: [id])
+  uploader User    @relation("UserFiles", fields: [uploadedBy], references: [id])
 }
 
 model NeuralNode {
-  id          String       @id @default(uuid())
+  id          String   @id @default(uuid())
   title       String
   description String?
-  type        String
-  status      String       @default("active")
-  priority    String       @default("medium")
+  type        String // idea, task, note, insight
+  status      String   @default("active") // active, archived
+  priority    String   @default("medium") // low, medium, high
   createdBy   String
   graphId     String?
-  linkedNodes String       @default("[]")
-  position    String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  graph       NeuralGraph? @relation("GraphNodes", fields: [graphId], references: [id])
-  creator     User         @relation("UserNeuralNodes", fields: [createdBy], references: [id])
+  linkedNodes String   @default("[]") // Store as JSON string array
+  position    String? // Store as JSON string {x, y}
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator User         @relation("UserNeuralNodes", fields: [createdBy], references: [id])
+  graph   NeuralGraph? @relation("GraphNodes", fields: [graphId], references: [id])
 }
 
 model NeuralGraph {
@@ -194,76 +203,51 @@ model NeuralGraph {
   createdBy   String
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  creator     User         @relation("UserNeuralGraphs", fields: [createdBy], references: [id])
   nodes       NeuralNode[] @relation("GraphNodes")
+
+  creator User @relation("UserNeuralGraphs", fields: [createdBy], references: [id])
 }
 
 model KnowledgeNode {
-  id        String                  @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
-  type      String
-  sourceId  String?
+  type      String // concept, document, task, user
+  sourceId  String? // Original entity ID (taskId, docId, etc)
   createdBy String
-  createdAt DateTime                @default(now())
-  updatedAt DateTime                @updatedAt
-  creator   User                    @relation("UserKnowledgeNodes", fields: [createdBy], references: [id])
-  incoming  KnowledgeRelationship[] @relation("TargetNode")
-  outgoing  KnowledgeRelationship[] @relation("SourceNode")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator  User                    @relation("UserKnowledgeNodes", fields: [createdBy], references: [id])
+  outgoing KnowledgeRelationship[] @relation("SourceNode")
+  incoming KnowledgeRelationship[] @relation("TargetNode")
 }
 
 model KnowledgeRelationship {
-  id           String        @id @default(uuid())
+  id           String   @id @default(uuid())
   sourceNodeId String
   targetNodeId String
-  relationType String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  targetNode   KnowledgeNode @relation("TargetNode", fields: [targetNodeId], references: [id])
-  sourceNode   KnowledgeNode @relation("SourceNode", fields: [sourceNodeId], references: [id])
+  relationType String // depends_on, related_to, assigned_to
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sourceNode KnowledgeNode @relation("SourceNode", fields: [sourceNodeId], references: [id])
+  targetNode KnowledgeNode @relation("TargetNode", fields: [targetNodeId], references: [id])
 }
 
 model Mission {
   id            String    @id @default(uuid())
   title         String
   description   String?
-  status        String    @default("not_started")
-  priority      String    @default("medium")
-  assignedUsers String    @default("[]")
+  status        String    @default("not_started") // not_started, in_progress, completed, blocked
+  priority      String    @default("medium") // low, medium, high
+  assignedUsers String    @default("[]") // JSON string array of User IDs
   startDate     DateTime?
   dueDate       DateTime?
-  progress      Int       @default(0)
-  relatedTasks  String    @default("[]")
+  progress      Int       @default(0) // percentage
+  relatedTasks  String    @default("[]") // JSON string array of task IDs
   createdBy     String
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  creator       User      @relation("UserMissions", fields: [createdBy], references: [id])
-}
 
-model Campaign {
-  id           String    @id @default(uuid())
-  campaignName String
-  type         String
-  status       String    @default("planning")
-  budget       Float     @default(0)
-  startDate    DateTime?
-  endDate      DateTime?
-  assignedTeam String?
-  createdBy    String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  creator      User      @relation("UserCampaigns", fields: [createdBy], references: [id])
-}
-
-model Operation {
-  id              String    @id @default(uuid())
-  operationName   String
-  department      String
-  status          String    @default("pending")
-  priority        String    @default("medium")
-  region          String
-  assignedManager String?
-  createdBy       String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  creator         User      @relation("UserOperations", fields: [createdBy], references: [id])
+  creator User @relation("UserMissions", fields: [createdBy], references: [id])
 }

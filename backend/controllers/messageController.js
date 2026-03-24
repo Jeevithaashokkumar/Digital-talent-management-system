@@ -16,11 +16,7 @@ const getMessages = async (req, res) => {
 
         const messages = await prisma.message.findMany({
             where,
-            include: { 
-                sender: { select: { id: true, name: true } },
-                replyTo: { include: { sender: { select: { id: true, name: true } } } },
-                reactions: { include: { user: { select: { id: true, name: true } } } }
-            },
+            include: { sender: { select: { id: true, name: true } } },
             orderBy: { createdAt: 'asc' }
         });
         res.json(messages);
@@ -28,7 +24,6 @@ const getMessages = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-
 const sendMessage = async (req, res) => {
     try {
         const { content, receiverId, replyToId } = req.body;
@@ -40,8 +35,8 @@ const sendMessage = async (req, res) => {
                 replyToId: replyToId || null
             },
             include: { 
-                sender: { select: { id: true, name: true } },
-                replyTo: { include: { sender: { select: { id: true, name: true } } } }
+               sender: { select: { id: true, name: true } },
+               replyTo: { include: { sender: { select: { id: true, name: true } } } }
             }
         });
         res.status(201).json(message);
@@ -68,8 +63,10 @@ const editMessage = async (req, res) => {
 const deleteMessage = async (req, res) => {
     try {
         const { id } = req.params;
+        // First delete reactions
+        await prisma.reaction.deleteMany({ where: { messageId: id } });
         await prisma.message.delete({ where: { id } });
-        res.json({ message: 'Message deleted' });
+        res.json({ message: 'Signal terminated' });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
@@ -78,12 +75,12 @@ const deleteMessage = async (req, res) => {
 const togglePin = async (req, res) => {
     try {
         const { id } = req.params;
-        const message = await prisma.message.findUnique({ where: { id } });
-        const updated = await prisma.message.update({
+        const current = await prisma.message.findUnique({ where: { id } });
+        const message = await prisma.message.update({
             where: { id },
-            data: { isPinned: !message.isPinned }
+            data: { isPinned: !current.isPinned }
         });
-        res.json(updated);
+        res.json(message);
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
@@ -101,14 +98,13 @@ const reactToMessage = async (req, res) => {
 
         if (existing) {
             await prisma.reaction.delete({ where: { id: existing.id } });
-            res.json({ action: 'removed' });
-        } else {
-            const reaction = await prisma.reaction.create({
-                data: { messageId: id, userId, emoji },
-                include: { user: { select: { id: true, name: true } } }
-            });
-            res.json({ action: 'added', reaction });
+            return res.json({ action: 'removed', reaction: existing });
         }
+
+        const reaction = await prisma.reaction.create({
+            data: { emoji, userId, messageId: id }
+        });
+        res.json({ action: 'added', reaction });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }

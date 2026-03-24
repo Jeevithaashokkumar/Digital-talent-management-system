@@ -5,18 +5,34 @@ import {
   Plus, MoreHorizontal, Settings, LogOut, Grid, 
   Layers, Rocket, Database, Briefcase, Zap, 
   PieChart, Brain, Info, LayoutList, Terminal, 
-  Layout, Laptop 
+  Layout, Laptop, Sun, Moon, Type, Globe
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBoardStore } from '@/store/useBoardStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSettingsStore, LANGUAGES, Language } from '@/store/useSettingsStore';
+import { useEffect } from 'react';
+
+import NotificationDropdown from './NotificationDropdown';
+import SearchPopover from './SearchPopover';
+import ProfileDropdown from './ProfileDropdown';
+import SystemInfoModal from './SystemInfoModal';
+import SettingsDropdown from './SettingsDropdown';
 
 export default function Navbar() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const setActiveView = useBoardStore(state => state.setActiveView);
+  const { theme, language, hydrate } = useSettingsStore();
+
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  const activeLang = LANGUAGES.find(l => l.code === language);
 
   const menuData: any = {
     'Spaces': [
@@ -36,6 +52,7 @@ export default function Navbar() {
   };
 
   return (
+    <>
     <nav className="h-16 bg-white/5 backdrop-blur-2xl border-b border-white/10 flex items-center justify-between px-6 text-white shadow-2xl z-50 relative shrink-0">
       <div className="flex items-center gap-4 lg:gap-8">
         <button className="lg:hidden p-2 hover:bg-white/10 rounded-xl" onClick={() => (window as any).toggleSidebar?.()}>
@@ -140,40 +157,86 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center gap-6">
-        <div className="relative group flex items-center">
-          <Search className="absolute left-3.5 text-white/40 group-focus-within:text-indigo-400 transition-colors" size={20} />
-          <input 
-            type="text" 
-            placeholder="Search the Matrix..." 
-            onKeyDown={(e) => e.key === 'Enter' && (window as any).addToast?.(`Neural Search Initiated`, 'info')}
-            className="bg-white/10 border border-white/10 focus:bg-white/20 focus:text-white focus:border-indigo-500/50 w-64 py-2.5 pl-11 pr-4 rounded-xl text-base font-medium outline-none transition-all placeholder:text-white/30 backdrop-blur-md"
-          />
+        <SearchPopover />
+        
+        <div className="relative">
+          <button 
+            onClick={() => setActiveMenu(activeMenu === 'Notifications' ? null : 'Notifications')}
+            className={`p-2.5 rounded-xl transition-all relative ${activeMenu === 'Notifications' ? 'bg-indigo-500/20 shadow-lg shadow-indigo-500/10' : 'hover:bg-white/10'}`}
+          >
+            <Bell size={24} className={activeMenu === 'Notifications' ? 'text-indigo-400' : 'text-indigo-300'} />
+            <span className="absolute top-2 right-2 w-3 h-3 bg-pink-500 rounded-full border-2 border-[#1e1e2e]"></span>
+          </button>
+          
+          <AnimatePresence>
+            {activeMenu === 'Notifications' && (
+              <NotificationDropdown onClose={() => setActiveMenu(null)} />
+            )}
+          </AnimatePresence>
         </div>
+
         <button 
-          onClick={() => (window as any).addToast?.(`0 Residual Notifications`, 'success')}
-          className="hover:bg-white/10 p-2.5 rounded-xl transition-all relative"
+          onClick={() => setIsInfoOpen(true)}
+          className="hover:bg-white/10 p-2.5 rounded-xl transition-all text-slate-300 hover:text-white"
         >
-          <Bell size={24} className="text-indigo-300" />
-          <span className="absolute top-2 right-2 w-3 h-3 bg-pink-500 rounded-full border-2 border-[#1e1e2e]"></span>
+          <Info size={24} />
         </button>
-        <button 
-          onClick={() => (window as any).addToast?.(`Accessing Knowledge Base`, 'info')}
-          className="hover:bg-white/10 p-2.5 rounded-xl transition-all"
-        ><Info size={24} className="text-slate-300" /></button>
-        <div className="flex items-center gap-3 cursor-pointer group">
-          <div title={user?.name ? (user.name.replace(/OPERATOR|Operator/gi, 'User').trim() || user.name) : 'User'} className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-[2px] group-hover:rotate-6 group-hover:scale-110 transition-all shadow-xl shadow-indigo-500/20">
-            <div className="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center text-xs font-black">
-              {user?.name ? (user.name.replace(/OPERATOR|Operator/gi, 'User').trim() || 'User').substring(0, 2).toUpperCase() : 'US'}
+
+        {/* Theme Toggle — quick click to swap dark/light */}
+        <button
+          onClick={() => useSettingsStore.getState().setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="hover:bg-white/10 p-2.5 rounded-xl transition-all text-slate-300 hover:text-white"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {theme === 'dark' ? <Moon size={22} className="text-indigo-300" /> : <Sun size={22} className="text-amber-400" />}
+        </button>
+
+        {/* Language + Font Settings */}
+        <div className="relative">
+          <button
+            onClick={() => setActiveMenu(activeMenu === 'Settings' ? null : 'Settings')}
+            className={`flex items-center gap-2 p-2.5 rounded-xl transition-all ${activeMenu === 'Settings' ? 'bg-indigo-500/20 text-indigo-400' : 'hover:bg-white/10 text-slate-300 hover:text-white'}`}
+            title="Language & Font Settings"
+          >
+            <span className="text-base leading-none">{activeLang?.flag || '🌐'}</span>
+            <Globe size={18} />
+          </button>
+          <AnimatePresence>
+            {activeMenu === 'Settings' && (
+              <SettingsDropdown onClose={() => setActiveMenu(null)} />
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="relative">
+          <div 
+            onClick={() => setActiveMenu(activeMenu === 'Profile' ? null : 'Profile')}
+            className={`flex items-center gap-3 cursor-pointer group p-1 pr-3 rounded-2xl transition-all ${activeMenu === 'Profile' ? 'bg-white/10' : 'hover:bg-white/5'}`}
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-[2px] group-hover:rotate-6 group-hover:scale-105 transition-all shadow-xl shadow-indigo-500/20">
+              <div className="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center text-xs font-black italic">
+                {user?.name ? (user.name.replace(/OPERATOR|Operator/gi, 'User').trim() || 'User').substring(0, 2).toUpperCase() : 'US'}
+              </div>
             </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-black text-white uppercase tracking-tight group-hover:text-indigo-400 transition-colors">
+                {user?.name ? user.name.replace(/OPERATOR|Operator/gi, 'User').trim() : 'System User'}
+              </span>
+              <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{user?.role || 'Operator'}</span>
+            </div>
+            <ChevronDown size={14} className={`text-white/20 transition-transform ${activeMenu === 'Profile' ? 'rotate-180' : ''}`} />
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-black text-white uppercase tracking-tight group-hover:text-indigo-400 transition-colors">
-              {user?.name ? user.name.replace(/OPERATOR|Operator/gi, 'User').trim() : 'System User'}
-            </span>
-            <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{user?.role || 'Operator'}</span>
-          </div>
+
+          <AnimatePresence>
+            {activeMenu === 'Profile' && (
+              <ProfileDropdown onClose={() => setActiveMenu(null)} />
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </nav>
+    
+    <SystemInfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
+    </>
   );
 }
