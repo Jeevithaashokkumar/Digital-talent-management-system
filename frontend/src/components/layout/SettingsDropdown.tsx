@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, Moon, Type, Globe, Check, ChevronDown } from 'lucide-react';
+import { Sun, Moon, Type, Globe, Check, ChevronDown, Grid } from 'lucide-react';
 import { useSettingsStore, LANGUAGES, FONT_SIZES } from '@/store/useSettingsStore';
 
 export default function SettingsDropdown({ onClose }: { onClose: () => void }) {
@@ -10,9 +10,9 @@ export default function SettingsDropdown({ onClose }: { onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<'theme' | 'font' | 'language'>('theme');
 
   const TABS = [
-    { id: 'theme', icon: theme === 'dark' ? Moon : Sun, label: 'Theme' },
-    { id: 'font', icon: Type, label: 'Font' },
-    { id: 'language', icon: Globe, label: 'Lang' },
+    { id: 'theme', icon: Grid, label: 'Appearance' },
+    { id: 'font', icon: Type, label: 'Typography' },
+    { id: 'language', icon: Globe, label: 'Language' },
   ] as const;
 
   return (
@@ -28,14 +28,20 @@ export default function SettingsDropdown({ onClose }: { onClose: () => void }) {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 flex flex-col items-center gap-1 py-4 text-[9px] font-black uppercase tracking-widest transition-all ${
+            className={`flex-1 flex flex-col items-center gap-2 py-5 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative ${
               activeTab === tab.id
-                ? 'text-indigo-400 border-b-2 border-indigo-500 bg-indigo-500/5'
-                : 'text-white/30 hover:text-white/60'
+                ? 'text-indigo-400 bg-indigo-500/5'
+                : 'text-white/20 hover:text-white/40'
             }`}
           >
-            <tab.icon size={16} />
+            <tab.icon size={18} className={activeTab === tab.id ? 'scale-110' : ''} />
             {tab.label}
+            {activeTab === tab.id && (
+              <motion.div 
+                layoutId="activeTab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500"
+              />
+            )}
           </button>
         ))}
       </div>
@@ -52,20 +58,28 @@ export default function SettingsDropdown({ onClose }: { onClose: () => void }) {
               <button
                 key={opt.value}
                 onClick={() => { setTheme(opt.value as any); onClose(); }}
-                className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+                className={`w-full flex items-center gap-4 p-4 rounded-[1.5rem] border transition-all duration-300 relative group overflow-hidden ${
                   theme === opt.value
-                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
-                    : 'bg-white/5 border-white/5 text-white/50 hover:bg-white/10'
+                    ? 'bg-indigo-500/10 border-indigo-500/30'
+                    : 'bg-white/3 border-white/5 hover:bg-white/5 hover:border-white/10'
                 }`}
               >
-                <div className={`p-2.5 rounded-xl ${theme === opt.value ? 'bg-indigo-500/20' : 'bg-white/5'}`}>
-                  <opt.icon size={18} />
+                <div className={`p-3 rounded-2xl transition-all ${
+                  theme === opt.value ? 'bg-indigo-500/20 text-indigo-400' : 'bg-white/5 text-white/30 group-hover:bg-white/10 group-hover:text-white/60'
+                }`}>
+                  <opt.icon size={20} className={theme === opt.value ? 'animate-pulse' : ''} />
                 </div>
                 <div className="text-left">
-                  <p className="text-xs font-black uppercase tracking-wider">{opt.label}</p>
-                  <p className="text-[9px] text-white/30 mt-0.5">{opt.desc}</p>
+                  <p className={`text-[11px] font-black uppercase tracking-widest ${theme === opt.value ? 'text-white' : 'text-white/60'}`}>
+                    {opt.label}
+                  </p>
+                  <p className="text-[9px] font-bold text-white/30 uppercase tracking-tighter mt-1">{opt.desc}</p>
                 </div>
-                {theme === opt.value && <Check size={16} className="ml-auto text-indigo-400" />}
+                {theme === opt.value && (
+                  <div className="ml-auto w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center">
+                    <Check size={14} className="text-indigo-400" />
+                  </div>
+                )}
               </button>
             ))}
           </div>

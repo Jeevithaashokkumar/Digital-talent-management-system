@@ -17,6 +17,7 @@ export default function CreateAssetModal({ isOpen, onClose, onSubmit, type }: Cr
     description: '',
     priority: 'medium',
     dueDate: '',
+    startDate: '',
     tags: '',
     content: '',
     color: '#6366f1'
@@ -29,6 +30,7 @@ export default function CreateAssetModal({ isOpen, onClose, onSubmit, type }: Cr
         description: '',
         priority: 'medium',
         dueDate: '',
+        startDate: '',
         tags: '',
         content: '',
         color: '#6366f1'
@@ -133,13 +135,24 @@ export default function CreateAssetModal({ isOpen, onClose, onSubmit, type }: Cr
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-indigo-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                      <Calendar size={14} /> Start Date
+                    </label>
+                    <input 
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-indigo-500/50 transition-all font-bold [color-scheme:dark]"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-indigo-400 uppercase tracking-widest ml-1 flex items-center gap-2">
                       <Calendar size={14} /> Neural Deadline
                     </label>
                     <input 
                       type="date"
                       value={formData.dueDate}
                       onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-indigo-500/50 transition-all font-bold"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-indigo-500/50 transition-all font-bold [color-scheme:dark]"
                     />
                   </div>
                 </div>

@@ -41,7 +41,7 @@ export default function AnalyticsModule({ stats }: { stats: any }) {
         {/* Task completion Pie */}
         <div className="lg:col-span-1 bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl">
            <h4 className="text-lg font-black text-white uppercase tracking-tighter mb-8">Resolution Ratio</h4>
-           <div className="h-[300px] w-full">
+           <div className="h-[300px] w-full min-h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -69,7 +69,7 @@ export default function AnalyticsModule({ stats }: { stats: any }) {
         {/* User Productivity Bar */}
         <div className="lg:col-span-2 bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl">
            <h4 className="text-lg font-black text-white uppercase tracking-tighter mb-8">User Efficiency</h4>
-           <div className="h-[300px] w-full">
+           <div className="h-[300px] w-full min-h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.productivity}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
@@ -100,7 +100,7 @@ export default function AnalyticsModule({ stats }: { stats: any }) {
                </div>
             </div>
          </div>
-         <div className="h-[300px] w-full">
+         <div className="h-[300px] w-full min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
                <LineChart data={[
                  { day: 'Mon', intake: 12, res: 10 },

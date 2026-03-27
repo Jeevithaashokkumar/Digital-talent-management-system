@@ -14,7 +14,8 @@ import {
   LogOut,
   Zap,
   CheckSquare,
-  Phone
+  Phone,
+  MessageSquare
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBoardStore } from '@/store/useBoardStore';
@@ -34,10 +35,11 @@ export default function UserSidebar({ onToggleSidebar, isOpen }: any) {
     { id: 'Neural Nodes', label: 'Neural Core', icon: <BrainCircuit size={20} />, color: 'text-rose-400' },
     { id: 'Chat', label: 'Command Chat', icon: <Users size={20} />, color: 'text-cyan-400' },
     { id: 'Call', label: 'Secure Signal', icon: <Phone size={20} />, color: 'text-emerald-500' },
+    { id: 'user-queries', label: 'Query Interface', icon: <MessageSquare size={20} />, color: 'text-rose-400' },
   ];
 
   return (
-    <aside className={`${isOpen ? 'w-80' : 'w-24'} bg-[#0a0b10] border-r border-white/5 transition-all duration-500 flex flex-col p-8 z-[100] relative overflow-hidden group`}>
+    <aside className={`${isOpen ? 'w-80' : 'w-24'} bg-[var(--sidebar-bg)] border-r border-white/5 transition-all duration-500 flex flex-col p-8 z-[100] relative overflow-hidden group`}>
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none" />
       
       <div className="mb-12 flex items-center gap-4 relative">
@@ -79,7 +81,7 @@ export default function UserSidebar({ onToggleSidebar, isOpen }: any) {
          ))}
       </nav>
 
-      <div className={`mt-8 ${isOpen ? 'p-6' : 'p-2'} bg-gradient-to-br from-[#12141c] to-[#0a0b10] border border-white/5 rounded-[2rem] relative overflow-hidden transition-all text-center`}>
+      <div className={`mt-8 ${isOpen ? 'p-6' : 'p-2'} bg-gradient-to-br from-[var(--nav-bg)] to-[var(--sidebar-bg)] border border-white/5 rounded-[2rem] relative overflow-hidden transition-all text-center`}>
          <div className="absolute -top-4 -right-4 w-12 h-12 bg-blue-500/10 rounded-full blur-xl" />
          {isOpen && (
            <div className="flex items-center gap-4 mb-4 text-left">

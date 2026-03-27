@@ -5,7 +5,8 @@ import {
   Plus, MoreHorizontal, Settings, LogOut, Grid, 
   Layers, Rocket, Database, Briefcase, Zap, 
   PieChart, Brain, Info, LayoutList, Terminal, 
-  Layout, Laptop, Sun, Moon, Type, Globe
+  Layout, Laptop, Sun, Moon, Type, Globe,
+  Calendar, GanttChart
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,7 +26,7 @@ export default function Navbar() {
   const isAdmin = user?.role === 'admin';
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
-  const setActiveView = useBoardStore(state => state.setActiveView);
+  const { activeView, setActiveView } = useBoardStore();
   const { theme, language, hydrate } = useSettingsStore();
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function Navbar() {
 
   return (
     <>
-    <nav className="h-16 bg-white/5 backdrop-blur-2xl border-b border-white/10 flex items-center justify-between px-6 text-white shadow-2xl z-50 relative shrink-0">
+    <nav className="h-16 bg-[var(--nav-bg)] backdrop-blur-2xl border-b border-[var(--card-border)] flex items-center justify-between px-6 text-white shadow-2xl z-50 relative shrink-0 transition-colors duration-500">
       <div className="flex items-center gap-4 lg:gap-8">
         <button className="lg:hidden p-2 hover:bg-white/10 rounded-xl" onClick={() => (window as any).toggleSidebar?.()}>
            <Grid size={24} />
@@ -154,6 +155,32 @@ export default function Navbar() {
           </div>
           )}
         </div>
+
+        {/* View Switcher */}
+        <div className="hidden lg:flex items-center bg-white/5 p-1 rounded-2xl border border-white/10 mx-4">
+          {[
+            { id: 'Boards', label: 'Board', icon: LayoutGrid },
+            { id: 'Mission Table', label: 'List', icon: LayoutList },
+            { id: 'Gantt', label: 'Gantt', icon: GanttChart },
+            { id: 'Calendar', label: 'Calendar', icon: Calendar },
+          ].map((view) => (
+            <button
+              key={view.id}
+              onClick={() => {
+                setActiveView(view.id);
+                (window as any).addToast?.(`Switching to ${view.label} View`, 'info');
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                activeView === view.id 
+                  ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' 
+                  : 'text-white/40 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <view.icon size={16} />
+              <span>{view.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex items-center gap-6">
@@ -182,24 +209,14 @@ export default function Navbar() {
           <Info size={24} />
         </button>
 
-        {/* Theme Toggle — quick click to swap dark/light */}
-        <button
-          onClick={() => useSettingsStore.getState().setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="hover:bg-white/10 p-2.5 rounded-xl transition-all text-slate-300 hover:text-white"
-          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-        >
-          {theme === 'dark' ? <Moon size={22} className="text-indigo-300" /> : <Sun size={22} className="text-amber-400" />}
-        </button>
-
-        {/* Language + Font Settings */}
+        {/* System Settings (Theme, Font, Language) */}
         <div className="relative">
           <button
             onClick={() => setActiveMenu(activeMenu === 'Settings' ? null : 'Settings')}
             className={`flex items-center gap-2 p-2.5 rounded-xl transition-all ${activeMenu === 'Settings' ? 'bg-indigo-500/20 text-indigo-400' : 'hover:bg-white/10 text-slate-300 hover:text-white'}`}
-            title="Language & Font Settings"
+            title="System Settings"
           >
-            <span className="text-base leading-none">{activeLang?.flag || '🌐'}</span>
-            <Globe size={18} />
+            <Settings size={24} className={activeMenu === 'Settings' ? 'text-indigo-400' : 'text-slate-300 transform transition-transform hover:rotate-90'} />
           </button>
           <AnimatePresence>
             {activeMenu === 'Settings' && (

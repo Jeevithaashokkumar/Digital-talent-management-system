@@ -27,6 +27,7 @@ const missionRoutes = require('./routes/missions');
 const userRoutes = require('./routes/users');
 const analyticsRoutes = require('./routes/analytics');
 const messageRoutes = require('./routes/messages');
+const queryRoutes = require('./routes/queryRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
@@ -44,6 +45,7 @@ app.use('/api/missions', missionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/queries', queryRoutes);
 
 const path = require('path');
 const http = require('http');

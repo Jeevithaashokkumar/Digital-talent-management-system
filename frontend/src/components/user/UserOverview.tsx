@@ -67,7 +67,7 @@ export default function UserOverview({ stats }: { stats: any }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
          {/* Performance Bar */}
-         <div className="bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl flex flex-col justify-between h-[350px]">
+         <div className="bg-[var(--sidebar-bg)] border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl flex flex-col justify-between h-[350px]">
             <div>
                <h4 className="text-xl font-black text-white uppercase tracking-tighter">Personal Velocity</h4>
                <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest mt-1">Completion trajectory for current directives.</p>
@@ -87,7 +87,7 @@ export default function UserOverview({ stats }: { stats: any }) {
          </div>
 
          {/* Mission Pulse */}
-         <div className="bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl flex flex-col justify-between">
+         <div className="bg-[var(--sidebar-bg)] border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl flex flex-col justify-between">
             <div>
                <h4 className="text-xl font-black text-white uppercase tracking-tighter">Strategic Impact</h4>
                <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest mt-1">Contribution to global mission objectives.</p>
@@ -122,7 +122,7 @@ export default function UserOverview({ stats }: { stats: any }) {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
          {/* Priority Directives (Upcoming Deadlines) */}
-         <div className="bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl">
+         <div className="bg-[var(--sidebar-bg)] border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl">
             <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-8 flex items-center gap-3">
                <Shield className="text-rose-500" size={20} /> Priority Directives
             </h4>
@@ -147,7 +147,7 @@ export default function UserOverview({ stats }: { stats: any }) {
          </div>
 
          {/* Neural Activity Feed (Recent personal activity) */}
-         <div className="bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl">
+         <div className="bg-[var(--sidebar-bg)] border border-white/5 rounded-[2.5rem] p-10 backdrop-blur-xl">
             <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-8 flex items-center gap-3">
                <Activity className="text-blue-400" size={20} /> Neural Activity Feed
             </h4>

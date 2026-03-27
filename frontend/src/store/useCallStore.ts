@@ -11,7 +11,7 @@ interface CallState {
   setCalling: (isCalling: boolean, caller: { id: string, name: string } | null, type?: 'voice' | 'video') => void;
   setReceivingCall: (isReceivingCall: boolean, caller: { id: string, name: string } | null, signal: any, type: 'voice' | 'video') => void;
   setInCall: (isInCall: boolean) => void;
-  setCallAccepted: (callAccepted: boolean) => void;
+  setCallAccepted: (callAccepted: boolean, signal?: any) => void;
   resetCall: () => void;
 }
 

@@ -18,11 +18,16 @@ import AdminOverview from '@/components/admin/AdminOverview';
 import UserManagement from '@/components/admin/UserManagement';
 import SystemSettings from '@/components/admin/SystemSettings';
 import AnalyticsModule from '@/components/admin/AnalyticsModule';
+import { Calendar as CalendarIcon, BarChartHorizontal } from 'lucide-react';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 import UserSidebar from '@/components/layout/UserSidebar';
 import UserOverview from '@/components/user/UserOverview';
 import ChatModule from '@/components/chat/ChatModule';
 import CallModule from '@/components/call/CallModule';
+import GanttModule from '@/components/gantt/GanttModule';
+import CalendarModule from '@/components/calendar/CalendarModule';
+import UserQueryModule from '@/components/queries/UserQueryModule';
+import AdminQueryModule from '@/components/queries/AdminQueryModule';
 import ToastContainer from '@/components/ui/ToastContainer';
 // Zombie components removed to restore build stability
 import { useBoardStore } from '@/store/useBoardStore';
@@ -210,7 +215,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#0f111a] overflow-hidden font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] overflow-hidden font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-500">
       {/* Modals Layer */}
       <CreateListModal 
         isOpen={isAddingList} 
@@ -287,6 +292,10 @@ export default function Dashboard() {
               <FolderModule />
             )}
 
+            {activeView === 'user-queries' && (
+              <UserQueryModule />
+            )}
+
             {/* Missing modules pruned */}
 
             {activeView === 'admin-dashboard' && (
@@ -303,6 +312,10 @@ export default function Dashboard() {
 
             {activeView === 'admin-analytics' && (
               <AnalyticsModule stats={adminStats} />
+            )}
+
+            {activeView === 'admin-queries' && (
+              <AdminQueryModule />
             )}
 
             {activeView === 'admin-tasks' && (
@@ -331,48 +344,12 @@ export default function Dashboard() {
 
             {/* Redundant Global Operations view pruned */}
 
-            {activeView === 'Mission Table' && (
-              <div className="p-10 flex flex-col gap-8 h-full overflow-y-auto custom-scrollbar">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-4xl font-black text-white tracking-tighter">Mission Manifest (Table View)</h2>
-                  <button className="bg-indigo-500 hover:bg-indigo-400 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95">Export CSV</button>
-                </div>
-                <div className="bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-3xl">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-white/5 border-b border-white/10">
-                        <th className="p-6 text-[10px] font-black text-white/40 uppercase tracking-widest">Mission ID</th>
-                        <th className="p-6 text-[10px] font-black text-white/40 uppercase tracking-widest">Title</th>
-                        <th className="p-6 text-[10px] font-black text-white/40 uppercase tracking-widest">Status</th>
-                        <th className="p-6 text-[10px] font-black text-white/40 uppercase tracking-widest">Priority</th>
-                        <th className="p-6 text-[10px] font-black text-white/40 uppercase tracking-widest">Assignee</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allTasks.map(task => (
-                        <tr key={task.id} className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer group">
-                          <td className="p-6 text-xs font-mono text-indigo-400">{task.id.substring(0, 8)}</td>
-                          <td className="p-6 text-sm font-black text-white group-hover:text-indigo-300">{task.title}</td>
-                          <td className="p-6">
-                            <span className="px-3 py-1 rounded-md bg-white/5 text-[10px] font-black uppercase tracking-tighter border border-white/10">{task.status || 'pending'}</span>
-                          </td>
-                          <td className="p-6">
-                            <span className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter ${task.priority === 'high' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                              {task.priority || 'standard'}
-                            </span>
-                          </td>
-                          <td className="p-6">
-                            <div className="flex items-center gap-3">
-                               <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-[10px] font-black text-white">{task.assignee?.name?.substring(0, 2).toUpperCase() || 'OP'}</div>
-                               <span className="text-xs font-bold text-white/60">{task.assignee?.name || 'Unassigned'}</span>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+            {activeView === 'Gantt' && (
+              <GanttModule />
+            )}
+
+            {activeView === 'Calendar' && (
+              <CalendarModule />
             )}
 
             {activeView === 'Core System' && (
@@ -380,7 +357,7 @@ export default function Dashboard() {
                 <h2 className="text-4xl font-black text-white tracking-tighter">System Integrity Matrix</h2>
                 <div className="space-y-6">
                   {['Database Node 01', 'Auth Gateway', 'Asset Storage', 'API Mesh'].map((sys, i) => (
-                    <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-3xl flex items-center justify-between">
+                    <div key={i} className="bg-[var(--card-bg)] border border-[var(--card-border)] p-6 rounded-3xl flex items-center justify-between transition-all">
                       <div className="flex items-center gap-6">
                         <div className="w-4 h-4 rounded-full bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-pulse"></div>
                         <span className="text-xl font-black text-white tracking-tight">{sys}</span>

@@ -126,7 +126,7 @@ export default function Login() {
                   placeholder="Enter characters above"
                   value={captchaText}
                   onChange={(e) => setCaptchaText(e.target.value)}
-                  className="w-full bg-white/40 border-2 border-slate-100 rounded-2xl p-4 outline-none focus:border-indigo-400 focus:bg-white transition-all font-mono tracking-[0.3em] text-center text-lg font-bold"
+                  className="w-full bg-white/40 border-2 border-slate-100 rounded-2xl p-4 outline-none focus:border-indigo-400 focus:bg-white transition-all font-mono tracking-[0.3em] text-center text-lg font-bold text-slate-700"
                   required
                 />
               </div>

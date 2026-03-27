@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   BrainCircuit,
-  Network
+  Network,
+  MessageSquare
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBoardStore } from '@/store/useBoardStore';
@@ -31,12 +32,13 @@ export default function AdminSidebar() {
     { id: 'admin-tasks', label: 'Global Directives', icon: <CheckSquare size={20} />, color: 'text-fuchsia-400' },
     { id: 'admin-missions', label: 'Strategic Goals', icon: <Target size={20} />, color: 'text-amber-400' },
     { id: 'admin-analytics', label: 'System Analytics', icon: <PieChart size={20} />, color: 'text-indigo-400' },
+    { id: 'admin-queries', label: 'Global Queries', icon: <MessageSquare size={20} />, color: 'text-rose-400' },
     { id: 'knowledge-graph', label: 'Knowledge Matrix', icon: <Network size={20} />, color: 'text-cyan-400' },
     { id: 'admin-settings', label: 'Core Configuration', icon: <Settings size={20} />, color: 'text-slate-400' },
   ];
 
   return (
-    <div className="w-80 h-full bg-[#0a0b10] border-r border-white/5 flex flex-col p-8 z-[100] relative overflow-hidden group">
+    <div className="w-80 h-full bg-[var(--sidebar-bg)] border-r border-white/5 flex flex-col p-8 z-[100] relative overflow-hidden group">
       {/* Animated Background Gradient */}
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none" />
       
@@ -78,7 +80,7 @@ export default function AdminSidebar() {
       </nav>
 
       {/* Admin Token */}
-      <div className="mt-8 p-6 bg-gradient-to-br from-[#12141c] to-[#0a0b10] border border-white/5 rounded-[2rem] relative overflow-hidden">
+      <div className="mt-8 p-6 bg-gradient-to-br from-[var(--nav-bg)] to-[var(--sidebar-bg)] border border-white/5 rounded-[2rem] relative overflow-hidden">
          <div className="absolute -top-4 -right-4 w-12 h-12 bg-emerald-500/10 rounded-full blur-xl" />
          <div className="flex items-center gap-4 mb-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-fuchsia-500/20 flex items-center justify-center border border-white/5">
@@ -86,9 +88,9 @@ export default function AdminSidebar() {
             </div>
             <div>
                <p className="text-[10px] font-black text-white uppercase tracking-tight leading-none mb-1">{user?.name}</p>
-               <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest opacity-80 flex items-center gap-1">
-                   <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Global Admin
-               </p>
+               <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest opacity-80 flex items-center gap-1">
+                   <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse inline-block" /> Global Admin
+               </span>
             </div>
          </div>
          <button 
