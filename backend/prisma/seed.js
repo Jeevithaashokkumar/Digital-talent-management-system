@@ -37,10 +37,51 @@ async function main() {
 
   // 4. Setup Cards
   const cardData = [
-    { title: 'Neural Core Integration', listId: lists[0].id, priority: 'high', tags: 'Backend,Security' },
-    { title: '3D Matrix Dashboard UI', listId: lists[1].id, priority: 'medium', tags: 'Frontend,UI' },
-    { title: 'SMTP Relay Protocol', listId: lists[1].id, priority: 'low', tags: 'Infrastructure' },
-    { title: 'User Auth Matrix', listId: lists[3].id, priority: 'high', tags: 'Security' }
+    { 
+      title: 'Neural Core Integration', 
+      listId: lists[1].id, 
+      priority: 'high', 
+      labels: 'Backend,Security',
+      startDate: new Date('2026-03-25T09:00:00Z'),
+      dueDate: new Date('2026-04-05T18:00:00Z'),
+      status: 'in-progress'
+    },
+    { 
+      title: '3D Matrix Dashboard UI', 
+      listId: lists[1].id, 
+      priority: 'medium', 
+      labels: 'Frontend,UI',
+      startDate: new Date('2026-03-28T10:00:00Z'),
+      dueDate: new Date('2026-04-02T17:00:00Z'),
+      status: 'in-progress'
+    },
+    { 
+      title: 'SMTP Relay Protocol', 
+      listId: lists[0].id, 
+      priority: 'low', 
+      labels: 'Infrastructure',
+      startDate: new Date('2026-03-20T08:00:00Z'),
+      dueDate: new Date('2026-03-29T12:00:00Z'),
+      status: 'todo'
+    },
+    { 
+      title: 'User Auth Matrix', 
+      listId: lists[2].id, 
+      priority: 'high', 
+      labels: 'Security',
+      startDate: new Date('2026-04-01T09:00:00Z'),
+      dueDate: new Date('2026-04-10T18:00:00Z'),
+      status: 'todo'
+    },
+    {
+      title: 'Global Security Audit',
+      listId: lists[3].id,
+      priority: 'high',
+      labels: 'Security,Audit',
+      startDate: new Date('2026-03-15T09:00:00Z'),
+      dueDate: new Date('2026-03-20T18:00:00Z'),
+      status: 'done'
+    }
   ];
 
   await Promise.all(cardData.map((c, i) => 

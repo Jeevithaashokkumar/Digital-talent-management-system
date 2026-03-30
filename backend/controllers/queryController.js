@@ -14,6 +14,23 @@ const createQuery = async (req, res) => {
                 status: 'pending'
             }
         });
+
+        // Automatically forward query as a message to Admin
+        const adminUser = await prisma.user.findFirst({
+            where: { role: 'admin' },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        if (adminUser) {
+            await prisma.message.create({
+                data: {
+                    content: `[ALERT: TACTICAL QUERY]\n**Subject:** ${title}\n**Detail:** ${message}`,
+                    senderId: req.user.id,
+                    receiverId: adminUser.id
+                }
+            });
+        }
+
         res.status(201).json(query);
     } catch (err) {
         console.error(err);

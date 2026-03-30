@@ -15,6 +15,10 @@ interface Card {
   priority: string;
   order: number;
   dueDate?: string;
+  startDate?: string;
+  assignedTo?: string;
+  createdBy: string;
+  createdAt: string;
   tags: string[];
   listId: string;
   boardId: string;
