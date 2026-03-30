@@ -1,7 +1,7 @@
 Digital Talent Management System (DTMS)
 A production-ready full-stack application built with Next.js (App Router), Node.js/Express, Prisma, and PostgreSQL.
 
-This codebase fulfills the Sprint 1 and Sprint 2 requirements, including JWT Authentication, Role-based Routing, and Task Management.
+This codebase fulfills including JWT Authentication, Role-based Routing, and Task Management.
 
 ## Setup Instructions
 
