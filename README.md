@@ -35,7 +35,6 @@ docker compose up -d
    ```
    The backend will run on `http://localhost:5000`.
 
-> [!IMPORTANT]
 > All database commands (e.g., `npx prisma studio`) MUST be executed from the `backend` directory to correctly resolve the environment configuration.
 
 ### 3. Frontend Setup
