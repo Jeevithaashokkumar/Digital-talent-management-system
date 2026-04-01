@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
 
 dotenv.config();
 
@@ -28,6 +31,8 @@ const userRoutes = require('./routes/users');
 const analyticsRoutes = require('./routes/analytics');
 const messageRoutes = require('./routes/messages');
 const queryRoutes = require('./routes/queryRoutes');
+const callRoutes = require('./routes/callRoutes');
+const prisma = require('./utils/prisma');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
@@ -46,10 +51,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/queries', queryRoutes);
-
-const path = require('path');
-const http = require('http');
-const { Server } = require('socket.io');
+app.use('/api/calls', callRoutes);
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -115,8 +117,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('call-user', (data) => {
+  socket.on('call-user', async (data) => {
     // data = { to, signal, from, name, type }
+    console.log(`Call Event: ${data.from} (${data.name}) -> ${data.to} [${data.type}]`);
     io.to(data.to).emit('incoming-call', { 
       signal: data.signal, 
       from: data.from, 
@@ -125,13 +128,41 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('answer-call', (data) => {
-    // data = { to, signal }
+  socket.on('answer-call', async (data) => {
+    // data = { to, signal, from, type }
+    console.log(`Call Answered: ${data.from} -> ${data.to}`);
+    // When call is answered, we log it as 'connected'
+    try {
+      if (data.to && data.from) {
+        await prisma.callLog.create({
+          data: {
+            callerId: data.to, 
+            receiverId: data.from,
+            type: data.type || 'voice',
+            status: 'connected'
+          }
+        });
+      }
+    } catch (e) { console.error('Call log error:', e); }
+
     io.to(data.to).emit('call-accepted', data.signal);
   });
 
-  socket.on('reject-call', (data) => {
-    // data = { to }
+  socket.on('reject-call', async (data) => {
+    // data = { to, from, type }
+    try {
+      if (data.to && data.from) {
+        await prisma.callLog.create({
+          data: {
+            callerId: data.to,
+            receiverId: data.from,
+            type: data.type || 'voice',
+            status: 'rejected'
+          }
+        });
+      }
+    } catch (e) { console.error('Call log error:', e); }
+
     io.to(data.to).emit('call-rejected');
   });
 

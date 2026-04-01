@@ -18,6 +18,8 @@ import AdminOverview from '@/components/admin/AdminOverview';
 import UserManagement from '@/components/admin/UserManagement';
 import SystemSettings from '@/components/admin/SystemSettings';
 import AnalyticsModule from '@/components/admin/AnalyticsModule';
+import AdminTaskManager from '@/components/admin/AdminTaskManager';
+import UserTaskManager from '@/components/user/UserTaskManager';
 import { Calendar as CalendarIcon, BarChartHorizontal } from 'lucide-react';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 import UserSidebar from '@/components/layout/UserSidebar';
@@ -26,8 +28,13 @@ import ChatModule from '@/components/chat/ChatModule';
 import CallModule from '@/components/call/CallModule';
 import GanttModule from '@/components/gantt/GanttModule';
 import CalendarModule from '@/components/calendar/CalendarModule';
+import MarketingHive from '@/components/marketing/MarketingHive';
+import GlobalOperations from '@/components/operations/GlobalOperations';
+import ExecutiveOverlook from '@/components/analytics/ExecutiveOverlook';
+import ResourceAllocation from '@/components/analytics/ResourceAllocation';
 import UserQueryModule from '@/components/queries/UserQueryModule';
 import AdminQueryModule from '@/components/queries/AdminQueryModule';
+import CallHistory from '@/components/call/CallHistory';
 import ToastContainer from '@/components/ui/ToastContainer';
 // Zombie components removed to restore build stability
 import { useBoardStore } from '@/store/useBoardStore';
@@ -52,13 +59,15 @@ export default function Dashboard() {
   const activeView = useBoardStore(state => state.activeView);
   const setActiveView = useBoardStore(state => state.setActiveView);
   
-  const callStore = useCallStore();
+  const setReceivingCall = useCallStore(state => state.setReceivingCall);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isAddingList, setIsAddingList] = useState(false);
   const [assetToCreate, setAssetToCreate] = useState<'Task' | 'Doc' | 'Folder' | 'Whiteboard' | null>(null);
+  const [assetInitialData, setAssetInitialData] = useState<any>(null);
   const [docs, setDocs] = useState<any[]>([]);
   const [folders, setFolders] = useState<any[]>([]);
   const [whiteboards, setWhiteboards] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [selectedWhiteboard, setSelectedWhiteboard] = useState<any>(null);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
@@ -68,33 +77,21 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const socketUrl = apiUrl.replace(/\/api$/, '');
+      socket = io(socketUrl);
       (window as any).socket = socket;
       socket.emit('join-chat', user.id);
 
       socket.on('incoming-call', (data: any) => {
-        callStore.setReceivingCall(true, { id: data.from, name: data.name }, data.signal, data.type);
-        // Play sound if possible
-      });
-
-      socket.on('call-accepted', (data: any) => {
-        callStore.setCallAccepted(true, data.signal);
-      });
-
-      socket.on('call-rejected', () => {
-        addToast('Call rejected', 'error');
-        callStore.resetCall();
-      });
-
-      socket.on('call-ended', () => {
-        callStore.resetCall();
+        setReceivingCall(true, { id: data.from, name: data.name }, data.signal, data.type);
       });
     }
 
     return () => {
       socket?.disconnect();
     };
-  }, [user, callStore]);
+  }, [user?.id, setReceivingCall]);
 
   const isAdmin = user?.role === 'admin';
 
@@ -116,14 +113,16 @@ export default function Dashboard() {
   const fetchInitialData = useCallback(async () => {
     try {
       const { docService, folderService, whiteboardService } = await import('@/services/boardService');
-      const [dRes, fRes, wRes] = await Promise.all([
+      const [dRes, fRes, wRes, uRes] = await Promise.all([
         docService.getDocs(),
         folderService.getFolders(),
-        whiteboardService.getWhiteboards()
+        whiteboardService.getWhiteboards(),
+        api.get('/users')
       ]);
       setDocs(dRes.data);
       setFolders(fRes.data);
       setWhiteboards(wRes.data);
+      setUsers(uRes.data);
     } catch (e) {
       console.error("Neural Fetch Failed:", e);
     }
@@ -167,7 +166,10 @@ export default function Dashboard() {
     (window as any).setActiveListForTask = (id: string) => {
        setAssetToCreate('Task');
     };
-    (window as any).openCreateAssetModal = (type: any) => setAssetToCreate(type);
+    (window as any).openCreateAssetModal = (type: any, initialData: any = null) => {
+      setAssetInitialData(initialData);
+      setAssetToCreate(type);
+    };
     (window as any).addToast = addToast;
     (window as any).toggleSidebar = () => setSidebarOpen(prev => !prev);
   }, [fetchBoardDetails, fetchUser, fetchInitialData, fetchAdminStats, isAdmin]);
@@ -190,8 +192,15 @@ export default function Dashboard() {
       if (assetToCreate === 'Task') {
         const firstListId = currentBoard?.lists[0]?.id;
         if (firstListId) {
-          await useBoardStore.getState().addCard(firstListId, data);
-          addToast(`Mission '${data.title}' Launched`, 'success');
+          if (assetInitialData?.id) {
+            await useBoardStore.getState().updateCard(assetInitialData.id, data);
+            addToast(`Mission '${data.title}' Recalibrated`, 'success');
+          } else {
+            await useBoardStore.getState().addCard(firstListId, data);
+            addToast(`Mission '${data.title}' Launched`, 'success');
+          }
+          // Notify AdminTaskManager to refresh if active
+          if ((window as any).refreshTasks) (window as any).refreshTasks();
         } else {
           addToast("No operative list found for mission deployment.", "error");
         }
@@ -209,6 +218,7 @@ export default function Dashboard() {
         addToast(`Whiteboard '${data.title}' Spawned`, 'success');
       }
       setAssetToCreate(null);
+      setAssetInitialData(null);
     } catch (e) {
       addToast("Asset Initialization Collision Detected", "error");
     }
@@ -224,9 +234,11 @@ export default function Dashboard() {
       />
       <CreateAssetModal 
         isOpen={!!assetToCreate} 
-        onClose={() => setAssetToCreate(null)} 
+        onClose={() => { setAssetToCreate(null); setAssetInitialData(null); }} 
         onSubmit={handleCreateAsset}
         type={assetToCreate as any}
+        initialData={assetInitialData}
+        users={users}
       />
       {/* 3D Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -236,7 +248,6 @@ export default function Dashboard() {
       </div>
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-      <IncomingCallModal />
       
       <Navbar />
       
@@ -253,7 +264,7 @@ export default function Dashboard() {
           
           <div className="flex-1 overflow-hidden relative">
             {activeView === 'Boards' && (
-              <TaskKanbanBoard />
+              isAdmin ? <TaskKanbanBoard /> : <UserTaskManager />
             )}
 
             {activeView === 'user-dashboard' && (
@@ -296,6 +307,10 @@ export default function Dashboard() {
               <UserQueryModule />
             )}
 
+            {activeView === 'Call History' && (
+              <CallHistory />
+            )}
+
             {/* Missing modules pruned */}
 
             {activeView === 'admin-dashboard' && (
@@ -319,15 +334,7 @@ export default function Dashboard() {
             )}
 
             {activeView === 'admin-tasks' && (
-              <div className="h-full overflow-hidden flex flex-col">
-                 <div className="p-8 pb-0">
-                    <h2 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">Global Directives</h2>
-                    <p className="text-white/30 text-[10px] font-black uppercase tracking-[0.3em] mt-2 mb-6">Manage every task across the matrix.</p>
-                 </div>
-                 <div className="flex-1 overflow-auto custom-scrollbar px-8 pb-8">
-                    <TaskKanbanBoard />
-                 </div>
-              </div>
+              <AdminTaskManager />
             )}
 
             {activeView === 'admin-missions' && (
@@ -342,7 +349,21 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Redundant Global Operations view pruned */}
+            {activeView === 'Marketing Hive' && (
+              <MarketingHive />
+            )}
+
+            {activeView === 'Global Operations' && (
+              <GlobalOperations />
+            )}
+
+            {activeView === 'Executive Overlook' && (
+              <ExecutiveOverlook />
+            )}
+
+            {activeView === 'Resource Allocation' && (
+              <ResourceAllocation />
+            )}
 
             {activeView === 'Gantt' && (
               <GanttModule />

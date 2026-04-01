@@ -103,12 +103,12 @@ export default function AdminOverview({ stats }: AdminOverviewProps) {
 
            <div className="space-y-6 my-10">
               <div className="flex justify-between items-end">
-                 <div>
+                  <div>
                     <h2 className="text-5xl font-black text-white tracking-tighter leading-none">
-                       {Math.round((stats.completedTasks / (stats.totalTasks || 1)) * 100)}%
+                       {stats.completionRate || 0}%
                     </h2>
                     <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mt-2 flex items-center gap-2">
-                       <ArrowUpRight size={14} /> Completion Efficiency
+                       <ArrowUpRight size={14} /> Global Efficiency
                     </p>
                  </div>
                  <div className="text-right">

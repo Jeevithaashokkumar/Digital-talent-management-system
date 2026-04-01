@@ -9,7 +9,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 const COLUMNS = [
   { id: 'todo', title: 'To Do', color: 'bg-slate-500', glow: 'shadow-slate-500/20', dot: 'bg-slate-400' },
   { id: 'in-progress', title: 'In Progress', color: 'bg-amber-500', glow: 'shadow-amber-500/20', dot: 'bg-amber-400' },
-  { id: 'done', title: 'Done', color: 'bg-emerald-500', glow: 'shadow-emerald-500/20', dot: 'bg-emerald-400' },
+  { id: 'completed', title: 'Completed', color: 'bg-emerald-500', glow: 'shadow-emerald-500/20', dot: 'bg-emerald-400' },
 ];
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -351,7 +351,7 @@ export default function TaskKanbanBoard() {
                   >
                     <option value="todo" className="bg-[#1e202e]">📋 To Do</option>
                     <option value="in-progress" className="bg-[#1e202e]">⚡ In Progress</option>
-                    <option value="done" className="bg-[#1e202e]">✅ Done</option>
+                    <option value="completed" className="bg-[#1e202e]">✅ Completed</option>
                   </select>
                 </div>
                 <div>

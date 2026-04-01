@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Users, User, Shield, Zap, Search, MoreHorizontal, Phone, Video, X, Reply, Pin as PinIcon, Smile } from 'lucide-react';
+import { Send, Users, User, Shield, Zap, Search, MoreHorizontal, Phone, Video, X, Reply, Pin as PinIcon, Smile, Activity } from 'lucide-react';
 import { io } from 'socket.io-client';
 import api from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -299,8 +299,21 @@ export default function ChatModule() {
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-8">
-             {messages.map((msg, i) => {
+              {messages.map((msg, i) => {
                 const isMine = msg.senderId === user?.id;
+                const isSystem = msg.isSystem || msg.senderName === 'System';
+
+                if (isSystem) {
+                    return (
+                        <div key={i} className="flex justify-center my-4 animate-in fade-in zoom-in duration-500">
+                             <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-2 flex items-center gap-3">
+                                 <Activity size={14} className="text-indigo-400" />
+                                 <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] italic">{msg.content}</span>
+                             </div>
+                        </div>
+                    );
+                }
+
                 return (
                    <div 
                      key={i} 

@@ -139,9 +139,9 @@ const updateTaskStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
-        const validStatuses = ['todo', 'in-progress', 'done'];
+        const validStatuses = ['todo', 'in-progress', 'completed'];
         if (!validStatuses.includes(status)) {
-            return res.status(400).json({ error: 'Invalid status. Must be: todo, in-progress, done' });
+            return res.status(400).json({ error: 'Invalid status. Must be: todo, in-progress, completed' });
         }
         const task = await prisma.task.update({
             where: { id },

@@ -9,13 +9,16 @@ interface CreateAssetModalProps {
   onClose: () => void;
   onSubmit: (data: any) => void;
   type: 'Task' | 'Doc' | 'Folder' | 'Whiteboard';
+  initialData?: any;
+  users?: any[];
 }
 
-export default function CreateAssetModal({ isOpen, onClose, onSubmit, type }: CreateAssetModalProps) {
+export default function CreateAssetModal({ isOpen, onClose, onSubmit, type, initialData, users = [] }: CreateAssetModalProps) {
   const [formData, setFormData] = useState<any>({
     title: '',
     description: '',
     priority: 'medium',
+    assignedTo: '',
     dueDate: '',
     startDate: '',
     tags: '',
@@ -25,18 +28,33 @@ export default function CreateAssetModal({ isOpen, onClose, onSubmit, type }: Cr
 
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        title: '',
-        description: '',
-        priority: 'medium',
-        dueDate: '',
-        startDate: '',
-        tags: '',
-        content: '',
-        color: '#6366f1'
-      });
+      if (initialData) {
+        setFormData({
+          title: initialData.title || '',
+          description: initialData.description || '',
+          priority: initialData.priority || 'medium',
+          assignedTo: initialData.assignedTo || initialData.assignee?.id || '',
+          dueDate: initialData.dueDate ? initialData.dueDate.split('T')[0] : '',
+          startDate: initialData.startDate ? initialData.startDate.split('T')[0] : '',
+          tags: Array.isArray(initialData.tags) ? initialData.tags.join(', ') : (initialData.labels || ''),
+          content: initialData.content || '',
+          color: initialData.color || '#6366f1'
+        });
+      } else {
+        setFormData({
+          title: '',
+          description: '',
+          priority: 'medium',
+          assignedTo: '',
+          dueDate: '',
+          startDate: '',
+          tags: '',
+          content: '',
+          color: '#6366f1'
+        });
+      }
     }
-  }, [isOpen, type]);
+  }, [isOpen, type, initialData]);
 
   const handleClear = () => {
     onClose();
@@ -52,11 +70,12 @@ export default function CreateAssetModal({ isOpen, onClose, onSubmit, type }: Cr
   };
 
   const getTitle = () => {
+    const action = initialData ? 'Modify' : 'Engage';
     switch(type) {
-      case 'Task': return 'Engage New Task';
-      case 'Doc': return 'Initialize Neural Doc';
-      case 'Folder': return 'Create Data Hive';
-      case 'Whiteboard': return 'Launch Visual Board';
+      case 'Task': return `${action} Directive`;
+      case 'Doc': return `${action} Neural Doc`;
+      case 'Folder': return `${action} Data Hive`;
+      case 'Whiteboard': return `${action} Visual Board`;
     }
   };
 
@@ -135,6 +154,21 @@ export default function CreateAssetModal({ isOpen, onClose, onSubmit, type }: Cr
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-indigo-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                      <User size={14} /> Assigned Operator
+                    </label>
+                    <select 
+                      value={formData.assignedTo}
+                      onChange={(e) => setFormData({...formData, assignedTo: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-indigo-500/50 transition-all appearance-none cursor-pointer font-bold"
+                    >
+                      <option value="" className="bg-[#1e202e]">Field Agent (None)</option>
+                      {users.map((u: any) => (
+                        <option key={u.id} value={u.id} className="bg-[#1e202e]">{u.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-indigo-400 uppercase tracking-widest ml-1 flex items-center gap-2">
                       <Calendar size={14} /> Start Date
                     </label>
                     <input 
@@ -184,7 +218,7 @@ export default function CreateAssetModal({ isOpen, onClose, onSubmit, type }: Cr
                 disabled={!formData.title}
                 className="flex-[2] px-8 py-5 rounded-3xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-2xl shadow-indigo-600/40 text-lg uppercase tracking-widest"
               >
-                Launch {type}
+                {initialData ? 'Update Matrix' : `Launch ${type}`}
               </button>
             </div>
           </motion.div>

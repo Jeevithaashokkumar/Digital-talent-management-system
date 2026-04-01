@@ -34,6 +34,8 @@ model User {
   receivedMessages Message[]       @relation("ReceivedMessages")
   reactions        Reaction[]
   queries          Query[]
+  callerLogs       CallLog[] @relation("CallerLogs")
+  receiverLogs     CallLog[] @relation("ReceiverLogs")
 }
 
 model Message {
@@ -265,4 +267,17 @@ model Query {
   updatedAt  DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model CallLog {
+  id         String   @id @default(uuid())
+  callerId   String
+  receiverId String
+  type       String   // "audio", "video"
+  status     String   // "connected", "rejected", "missed", "ended"
+  duration   Int      @default(0) // Duration in seconds
+  createdAt  DateTime @default(now())
+
+  caller   User @relation("CallerLogs", fields: [callerId], references: [id])
+  receiver User @relation("ReceiverLogs", fields: [receiverId], references: [id])
 }

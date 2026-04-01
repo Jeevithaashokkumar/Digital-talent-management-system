@@ -15,7 +15,11 @@ import {
   Zap,
   CheckSquare,
   Phone,
-  MessageSquare
+  MessageSquare,
+  Layout,
+  Database,
+  Laptop,
+  Layers
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBoardStore } from '@/store/useBoardStore';
@@ -35,7 +39,12 @@ export default function UserSidebar({ onToggleSidebar, isOpen }: any) {
     { id: 'Neural Nodes', label: 'Neural Core', icon: <BrainCircuit size={20} />, color: 'text-rose-400' },
     { id: 'Chat', label: 'Command Chat', icon: <Users size={20} />, color: 'text-cyan-400' },
     { id: 'Call', label: 'Secure Signal', icon: <Phone size={20} />, color: 'text-emerald-500' },
+    { id: 'Call History', label: 'Signal Logs', icon: <Activity size={20} />, color: 'text-indigo-400' },
     { id: 'user-queries', label: 'Query Interface', icon: <MessageSquare size={20} />, color: 'text-rose-400' },
+    { id: 'Marketing Hive', label: 'Marketing Hive', icon: <Layout size={20} />, color: 'text-pink-400' },
+    { id: 'Global Operations', label: 'Global Operations', icon: <Database size={20} />, color: 'text-blue-400' },
+    { id: 'Executive Overlook', label: 'Executive Overlook', icon: <Laptop size={20} />, color: 'text-indigo-400' },
+    { id: 'Resource Allocation', label: 'Resource Allocation', icon: <Layers size={20} />, color: 'text-amber-400' },
   ];
 
   return (

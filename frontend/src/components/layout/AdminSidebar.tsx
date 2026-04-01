@@ -15,7 +15,12 @@ import {
   ChevronRight,
   BrainCircuit,
   Network,
-  MessageSquare
+  MessageSquare,
+  Layout,
+  Database,
+  Laptop,
+  Layers,
+  Activity
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBoardStore } from '@/store/useBoardStore';
@@ -33,7 +38,12 @@ export default function AdminSidebar() {
     { id: 'admin-missions', label: 'Strategic Goals', icon: <Target size={20} />, color: 'text-amber-400' },
     { id: 'admin-analytics', label: 'System Analytics', icon: <PieChart size={20} />, color: 'text-indigo-400' },
     { id: 'admin-queries', label: 'Global Queries', icon: <MessageSquare size={20} />, color: 'text-rose-400' },
-    { id: 'knowledge-graph', label: 'Knowledge Matrix', icon: <Network size={20} />, color: 'text-cyan-400' },
+    { id: 'Call History', label: 'Signal Logs', icon: <Activity size={20} />, color: 'text-indigo-400' },
+    { id: 'Knowledge Graph', label: 'Knowledge Matrix', icon: <Network size={20} />, color: 'text-cyan-400' },
+    { id: 'Marketing Hive', label: 'Marketing Hive', icon: <Layout size={20} />, color: 'text-pink-400' },
+    { id: 'Global Operations', label: 'Global Operations', icon: <Database size={20} />, color: 'text-blue-400' },
+    { id: 'Executive Overlook', label: 'Executive Overlook', icon: <Laptop size={20} />, color: 'text-indigo-400' },
+    { id: 'Resource Allocation', label: 'Resource Allocation', icon: <Layers size={20} />, color: 'text-amber-400' },
     { id: 'admin-settings', label: 'Core Configuration', icon: <Settings size={20} />, color: 'text-slate-400' },
   ];
 
