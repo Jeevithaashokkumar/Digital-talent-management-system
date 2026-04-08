@@ -13,6 +13,11 @@ export default function UserQueryModule() {
     fetchUserQueries();
   }, [fetchUserQueries]);
 
+  useEffect(() => {
+    const unreadQueries = queries.filter(q => q.status === 'replied' && !q.isRead);
+    unreadQueries.forEach(q => useQueryStore.getState().markAsRead(q.id));
+  }, [queries]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !message) return;

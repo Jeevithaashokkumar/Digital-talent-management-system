@@ -30,6 +30,7 @@ import GanttModule from '@/components/gantt/GanttModule';
 import CalendarModule from '@/components/calendar/CalendarModule';
 import MarketingHive from '@/components/marketing/MarketingHive';
 import GlobalOperations from '@/components/operations/GlobalOperations';
+import DeadlineReminderAlert from '@/components/operations/DeadlineReminderAlert';
 import ExecutiveOverlook from '@/components/analytics/ExecutiveOverlook';
 import ResourceAllocation from '@/components/analytics/ResourceAllocation';
 import UserQueryModule from '@/components/queries/UserQueryModule';
@@ -262,6 +263,8 @@ export default function Dashboard() {
         <main className="flex-1 flex flex-col overflow-hidden relative">
           <BoardHeader title={activeView === 'Boards' ? (currentBoard?.title || "Digital Talent Matrix") : activeView} />
           
+          <DeadlineReminderAlert />
+
           <div className="flex-1 overflow-hidden relative">
             {activeView === 'Boards' && (
               isAdmin ? <TaskKanbanBoard /> : <UserTaskManager />

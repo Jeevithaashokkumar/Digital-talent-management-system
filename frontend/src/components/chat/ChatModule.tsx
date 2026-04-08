@@ -4,10 +4,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Users, User, Shield, Zap, Search, MoreHorizontal, Phone, Video, X, Reply, Pin as PinIcon, Smile, Activity } from 'lucide-react';
 import { io } from 'socket.io-client';
 import api from '@/services/api';
+import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBoardStore } from '@/store/useBoardStore';
 import { useCallStore } from '@/store/useCallStore';
 import MessageContextMenu from './MessageContextMenu';
+import UserProfileModal from '../layout/UserProfileModal';
+import { UserStatusIndicator } from '../ui/UserStatusIndicator';
 
 export default function ChatModule() {
   const user = useAuthStore((state: any) => state.user);
@@ -23,6 +26,8 @@ export default function ChatModule() {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, msg: any } | null>(null);
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const [editingMessage, setEditingMessage] = useState<any>(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [selectedUserProfile, setSelectedUserProfile] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeChatRef = useRef(activeChat);
   const userRef = useRef(user);
@@ -82,6 +87,14 @@ export default function ChatModule() {
           return m;
        }));
     });
+    
+    socket.on('user-status-change', (data: any) => {
+      setUsers(prev => prev.map(u => 
+        u.id === data.userId 
+          ? { ...u, isOnline: data.isOnline, lastSeen: data.lastSeen || u.lastSeen } 
+          : u
+      ));
+    });
 
     return () => {
       socket?.off('receive-message');
@@ -110,9 +123,10 @@ export default function ChatModule() {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const initiateCall = (type: 'voice' | 'video') => {
-    if (!activeChat) return;
-    callStore.setCalling(true, { id: activeChat.id, name: activeChat.name }, type);
+  const initiateCall = (type: 'voice' | 'video', targetUser?: any) => {
+    const target = targetUser || activeChat;
+    if (!target) return;
+    callStore.setCalling(true, { id: target.id, name: target.name }, type);
     setActiveView('Call');
   };
 
@@ -154,6 +168,23 @@ export default function ChatModule() {
       console.error(e);
       setMessages(prev => prev.filter(m => m.tempId !== tempId));
     }
+  };
+
+  const handleSendToUser = async (targetUserId: string, content: string) => {
+    const msgData = {
+      content,
+      receiverId: targetUserId,
+      senderId: user?.id,
+      senderName: user?.name,
+      createdAt: new Date().toISOString()
+    };
+    try {
+      const res = await api.post('/messages', msgData);
+      socket.emit('send-message', res.data);
+      if (activeChat?.id === targetUserId) {
+        setMessages(prev => [...prev, res.data]);
+      }
+    } catch (e) { console.error(e); }
   };
 
   const handleAction = async (action: string, msg: any) => {
@@ -242,24 +273,46 @@ export default function ChatModule() {
              <div className="pt-4 px-4 pb-2 text-[10px] font-black text-white/10 uppercase tracking-[0.2em] italic">Direct Signals</div>
              
              {filteredUsers.map(u => (
-                <button 
-                  key={u.id}
-                  onClick={() => setActiveChat(u)}
-                  className={`w-full flex items-center gap-4 p-5 rounded-[2rem] transition-all group ${activeChat?.id === u.id ? 'bg-indigo-500 shadow-2xl shadow-indigo-500/20' : 'hover:bg-white/5 border border-transparent hover:border-white/5'}`}
-                >
-                   <div className="relative">
-                      <div className={`p-3 rounded-2xl ${activeChat?.id === u.id ? 'bg-white/20' : 'bg-white/5 text-white/30 group-hover:text-white group-hover:bg-white/10'}`}>
-                         <User size={20} />
-                      </div>
-                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-[#0a0b10] rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                   </div>
-                   <div className="text-left font-black uppercase text-xs tracking-widest">
-                      <p className={activeChat?.id === u.id ? 'text-white' : 'text-white/40'}>{(u.name || '').replace(/OPERATOR|Operator/gi, 'User').trim() || 'User'}</p>
-                      <p className={activeChat?.id === u.id ? 'text-white/60 text-[8px]' : 'text-white/10 text-[8px] italic'}>{u.role}</p>
-                   </div>
-                </button>
+                 <div key={u.id} className="relative group/useritem">
+                  <button 
+                    onClick={() => setActiveChat(u)}
+                    className={`w-full flex items-center gap-4 p-5 rounded-[2rem] transition-all group ${activeChat?.id === u.id ? 'bg-indigo-500 shadow-2xl shadow-indigo-500/20' : 'hover:bg-white/5 border border-transparent hover:border-white/5'}`}
+                  >
+                    <div className="relative pointer-events-auto" onClick={(e) => {
+                       e.stopPropagation();
+                       setSelectedUserProfile(u);
+                       setProfileModalOpen(true);
+                    }}>
+                        <div className={`p-3 rounded-2xl ${activeChat?.id === u.id ? 'bg-white/20' : 'bg-white/5 text-white/30 group-hover:text-white group-hover:bg-white/10'}`}>
+                          <User size={20} />
+                        </div>
+                        <div className="absolute -bottom-1 -right-1">
+                           <UserStatusIndicator isOnline={u.isOnline} size={10} />
+                        </div>
+                    </div>
+                    <div className="text-left font-black uppercase text-xs tracking-widest flex-1 min-w-0">
+                        <p className={`${activeChat?.id === u.id ? 'text-white' : 'text-white/40'} truncate`}>{(u.name || '').replace(/OPERATOR|Operator/gi, 'User').trim() || 'User'}</p>
+                        <div className="flex items-center gap-2">
+                           <p className={activeChat?.id === u.id ? 'text-white/60 text-[8px]' : 'text-white/10 text-[8px] italic'}>{u.role}</p>
+                           {!u.isOnline && u.lastSeen && (
+                              <span className={`text-[7px] font-bold ${activeChat?.id === u.id ? 'text-white/40' : 'text-white/10'}`}>
+                                 • {formatDistanceToNow(new Date(u.lastSeen), { addSuffix: true })}
+                              </span>
+                           )}
+                        </div>
+                    </div>
+                  </button>
+                 </div>
              ))}
           </div>
+        
+        <UserProfileModal 
+          isOpen={profileModalOpen}
+          onClose={() => setProfileModalOpen(false)}
+          user={selectedUserProfile}
+          onSendMessage={(msg) => handleSendToUser(selectedUserProfile.id, msg)}
+          onCall={(type) => initiateCall(type, selectedUserProfile)}
+        />
        </div>
 
        {/* Chat Area */}
@@ -273,8 +326,10 @@ export default function ChatModule() {
                 <div>
                    <h3 className="text-xl font-black text-white tracking-tighter uppercase italic drop-shadow-lg">{(activeChat?.name || 'Matrix Team Chat').replace(/OPERATOR|Operator/gi, 'User').trim()}</h3>
                    <div className="flex items-center gap-2 mt-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
-                      <span className="text-[8px] font-black text-emerald-400/60 uppercase tracking-[0.2em]">Signal Matrix Synchronized</span>
+                      <UserStatusIndicator isOnline={activeChat ? activeChat.isOnline : true} size={8} />
+                      <span className={`${activeChat?.isOnline ? 'text-emerald-400/60' : 'text-white/20'} text-[8px] font-black uppercase tracking-[0.2em]`}>
+                         {activeChat ? (activeChat.isOnline ? 'Active Signal Matrix' : `Link Severed — ${activeChat.lastSeen ? `Last Seen ${formatDistanceToNow(new Date(activeChat.lastSeen), { addSuffix: true })}` : 'Away'}`) : 'Global Matrix Static'}
+                      </span>
                    </div>
                 </div>
              </div>

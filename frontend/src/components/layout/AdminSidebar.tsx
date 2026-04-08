@@ -24,12 +24,21 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBoardStore } from '@/store/useBoardStore';
+import { useQueryStore } from '@/store/useQueryStore';
 
 export default function AdminSidebar() {
   const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
   const activeView = useBoardStore(state => state.activeView);
   const setActiveView = useBoardStore(state => state.setActiveView);
+  const queries = useQueryStore(state => state.queries);
+  const fetchAllQueries = useQueryStore(state => state.fetchAllQueries);
+
+  React.useEffect(() => {
+    fetchAllQueries();
+  }, [fetchAllQueries]);
+
+  const unreadCount = queries.filter(q => q.status === 'pending' && !q.isRead).length;
 
   const menuItems = [
     { id: 'admin-dashboard', label: 'Command Center', icon: <LayoutDashboard size={20} />, color: 'text-blue-400' },
@@ -37,7 +46,7 @@ export default function AdminSidebar() {
     { id: 'admin-tasks', label: 'Global Directives', icon: <CheckSquare size={20} />, color: 'text-fuchsia-400' },
     { id: 'admin-missions', label: 'Strategic Goals', icon: <Target size={20} />, color: 'text-amber-400' },
     { id: 'admin-analytics', label: 'System Analytics', icon: <PieChart size={20} />, color: 'text-indigo-400' },
-    { id: 'admin-queries', label: 'Global Queries', icon: <MessageSquare size={20} />, color: 'text-rose-400' },
+    { id: 'admin-queries', label: 'Global Queries', icon: <MessageSquare size={20} />, color: 'text-rose-400', badge: unreadCount },
     { id: 'Call History', label: 'Signal Logs', icon: <Activity size={20} />, color: 'text-indigo-400' },
     { id: 'Knowledge Graph', label: 'Knowledge Matrix', icon: <Network size={20} />, color: 'text-cyan-400' },
     { id: 'Marketing Hive', label: 'Marketing Hive', icon: <Layout size={20} />, color: 'text-pink-400' },
@@ -85,6 +94,11 @@ export default function AdminSidebar() {
               <span className={`text-[11px] font-black uppercase tracking-widest ${activeView === item.id ? 'translate-x-1' : ''} transition-transform`}>
                 {item.label}
               </span>
+              {(item as any).badge > 0 && (
+                <div className="absolute right-4 min-w-[18px] h-[18px] flex items-center justify-center bg-rose-500 rounded-full border-2 border-[var(--sidebar-bg)] shadow-lg shadow-rose-500/20 animate-bounce">
+                  <span className="text-[9px] font-black text-white leading-none">{(item as any).badge}</span>
+                </div>
+              )}
            </button>
          ))}
       </nav>

@@ -7,6 +7,8 @@ interface Query {
   message: string;
   status: 'pending' | 'replied';
   adminReply?: string;
+  isRead: boolean;
+  adminId?: string;
   userId: string;
   createdAt: string;
   user?: { name: string; email: string };
@@ -20,6 +22,7 @@ interface QueryStore {
   fetchUserQueries: () => Promise<void>;
   fetchAllQueries: () => Promise<void>;
   replyToQuery: (queryId: string, reply: string) => Promise<void>;
+  markAsRead: (queryId: string) => Promise<void>;
 }
 
 export const useQueryStore = create<QueryStore>((set, get) => ({
@@ -65,6 +68,17 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
       }));
     } catch (err) {
       set({ error: 'Failed to transmit reply' });
+    }
+  },
+  
+  markAsRead: async (queryId) => {
+    try {
+      const res = await api.put(`/queries/${queryId}/read`);
+      set(state => ({
+        queries: state.queries.map(q => q.id === queryId ? { ...q, isRead: true } : q)
+      }));
+    } catch (err) {
+      console.error("Failed to mark query as read:", err);
     }
   }
 }));

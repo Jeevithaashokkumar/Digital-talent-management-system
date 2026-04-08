@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { sendNotificationEmail } = require('../utils/mailer');
 
 const getMessages = async (req, res) => {
     try {
@@ -39,6 +40,27 @@ const sendMessage = async (req, res) => {
                replyTo: { include: { sender: { select: { id: true, name: true } } } }
             }
         });
+
+        // Trigger notification if it's a private message and receiver is offline
+        if (receiverId) {
+            const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
+            if (receiver && !receiver.isOnline) {
+                const subject = `New Message from ${message.sender.name}`;
+                const body = `<p>You have a new message: "${content}"</p><p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}">View in DTMS</a></p>`;
+                await sendNotificationEmail(receiver.email, subject, body);
+                
+                await prisma.notification.create({
+                    data: {
+                        userId: receiverId,
+                        type: 'message',
+                        email: receiver.email,
+                        subject,
+                        body
+                    }
+                });
+            }
+        }
+
         res.status(201).json(message);
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -110,4 +132,23 @@ const reactToMessage = async (req, res) => {
     }
 };
 
-module.exports = { getMessages, sendMessage, editMessage, deleteMessage, togglePin, reactToMessage };
+const markAsRead = async (req, res) => {
+    try {
+        const { senderId } = req.body;
+        const userId = req.user.id;
+
+        await prisma.message.updateMany({
+            where: {
+                senderId,
+                receiverId: userId,
+                isRead: false
+            },
+            data: { isRead: true }
+        });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+};
+
+module.exports = { getMessages, sendMessage, editMessage, deleteMessage, togglePin, reactToMessage, markAsRead };

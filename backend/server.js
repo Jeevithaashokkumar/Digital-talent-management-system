@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
+const { sendNotificationEmail } = require('./utils/mailer');
 
 dotenv.config();
 
@@ -61,6 +62,9 @@ const io = new Server(server, {
   }
 });
 
+const userSocketMap = new Map(); // socket.id -> userId
+const callTimeouts = new Map(); // callerId -> timeoutHandler
+
 // Socket.io for Collaborative Whiteboard
 io.on('connection', (socket) => {
   console.log('User connected to socket:', socket.id);
@@ -69,16 +73,68 @@ io.on('connection', (socket) => {
     socket.join(whiteboardId);
   });
 
-  socket.on('join-chat', (userId) => {
+  socket.on('join-chat', async (userId) => {
     socket.join(userId);
+    userSocketMap.set(socket.id, userId);
     console.log(`Operator ${userId} joined Command Channel`);
+    
+    try {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { isOnline: true }
+      });
+      io.emit('user-status-change', { userId, isOnline: true });
+    } catch (e) {
+      console.error('Status update error:', e);
+    }
   });
 
-  socket.on('send-message', (data) => {
+  socket.on('send-message', async (data) => {
     // data = { senderId, receiverId, content, senderName }
     if (data.receiverId) {
-      // Send to both receiver and sender (to sync multiple tabs)
-      io.to(data.receiverId).to(data.senderId).emit('receive-message', data);
+      // Check if receiver is online
+      const receiverSockets = Array.from(userSocketMap.entries())
+        .filter(([_, id]) => id === data.receiverId)
+        .map(([sockId, _]) => sockId);
+
+      const isOnline = receiverSockets.length > 0;
+
+      if (isOnline) {
+        // Send to both receiver and sender (to sync multiple tabs)
+        io.to(data.receiverId).to(data.senderId).emit('receive-message', data);
+        console.log(`Notification: Real-time message delivered to ${data.receiverId}`);
+      } else {
+        // Receiver is offline -> Send Email Alert
+        try {
+          const receiver = await prisma.user.findUnique({ where: { id: data.receiverId } });
+          if (receiver && receiver.email) {
+            const subject = `New Message from ${data.senderName || 'someone'}`;
+            const content = `
+              <p>You have a new message waiting for you in DTMS Command Center.</p>
+              <p><strong>From:</strong> ${data.senderName || 'DTMS User'}</p>
+              <p><strong>Message:</strong> "${data.content}"</p>
+              <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" style="padding: 10px 20px; background: #6366f1; color: white; text-decoration: none; border-radius: 5px;">View Message</a></p>
+            `;
+            await sendNotificationEmail(receiver.email, subject, content);
+            
+            // Store notification record
+            await prisma.notification.create({
+              data: {
+                userId: data.receiverId,
+                type: 'message',
+                email: receiver.email,
+                subject,
+                body: content
+              }
+            });
+            console.log(`Notification: Email alert sent to offline user ${data.receiverId}`);
+          }
+        } catch (e) {
+          console.error('Offline notification error:', e);
+        }
+        // Still emit to sender so their UI updates
+        io.to(data.senderId).emit('receive-message', data);
+      }
     } else {
       // Team Chat: Send to everyone
       io.emit('receive-message', data);
@@ -126,11 +182,78 @@ io.on('connection', (socket) => {
       name: data.name, 
       type: data.type 
     });
+
+    // Send immediate email notification for the incoming call
+    try {
+      const receiver = await prisma.user.findUnique({ where: { id: data.to } });
+      if (receiver && receiver.email) {
+        const subject = `URGENT: Incoming ${data.type || 'voice'} call from ${data.name}`;
+        const body = `
+          <div style="text-align: center; padding: 20px;">
+            <h2 style="color: #6366f1;">Incoming Call Detected</h2>
+            <p style="font-size: 18px;"><strong>${data.name}</strong> is attempting to establish a <strong>${data.type || 'voice'}</strong> connection with you.</p>
+            <div style="margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" style="background-color: #6366f1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Respond to Signal</a>
+            </div>
+          </div>
+        `;
+        await sendNotificationEmail(receiver.email, subject, body);
+        console.log(`Notification: Real-time call alert sent to ${receiver.email}`);
+      }
+    } catch (e) {
+      console.error('Call initiation email error:', e);
+    }
+
+    // Set timeout for missed call (30 seconds)
+    const timeoutId = setTimeout(async () => {
+      console.log(`Call Time-out: ${data.from} -> ${data.to} (Missed Call)`);
+      try {
+        const receiver = await prisma.user.findUnique({ where: { id: data.to } });
+        if (receiver && receiver.email) {
+          const subject = `Missed ${data.type || 'voice'} call from ${data.name}`;
+          const body = `<p>You missed a <strong>${data.type || 'voice'}</strong> call from <strong>${data.name}</strong>.</p><p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}">Call them back</a></p>`;
+          
+          await sendNotificationEmail(receiver.email, subject, body);
+          await prisma.callLog.create({
+            data: {
+              callerId: data.from,
+              receiverId: data.to,
+              type: data.type || 'voice',
+              status: 'missed'
+            }
+          });
+          await prisma.notification.create({
+            data: {
+              userId: data.to,
+              type: 'call',
+              email: receiver.email,
+              subject,
+              body
+            }
+          });
+        }
+        io.to(data.to).emit('call-missed');
+        io.to(data.from).emit('call-missed');
+      } catch (e) {
+        console.error('Missed call log error:', e);
+      }
+      callTimeouts.delete(data.from);
+    }, 30000);
+
+    callTimeouts.set(data.from, timeoutId);
   });
 
   socket.on('answer-call', async (data) => {
     // data = { to, signal, from, type }
     console.log(`Call Answered: ${data.from} -> ${data.to}`);
+    
+    // Clear missed call timeout
+    const timeout = callTimeouts.get(data.to);
+    if (timeout) {
+      clearTimeout(timeout);
+      callTimeouts.delete(data.to);
+    }
+
     // When call is answered, we log it as 'connected'
     try {
       if (data.to && data.from) {
@@ -150,6 +273,14 @@ io.on('connection', (socket) => {
 
   socket.on('reject-call', async (data) => {
     // data = { to, from, type }
+    
+    // Clear missed call timeout
+    const timeout = callTimeouts.get(data.to);
+    if (timeout) {
+      clearTimeout(timeout);
+      callTimeouts.delete(data.to);
+    }
+
     try {
       if (data.to && data.from) {
         await prisma.callLog.create({
@@ -180,8 +311,26 @@ io.on('connection', (socket) => {
     socket.to(data.whiteboardId).emit('remote-canvas-update', data);
   });
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected from socket');
+  socket.on('disconnect', async () => {
+    console.log('User disconnected from socket:', socket.id);
+    const userId = userSocketMap.get(socket.id);
+    if (userId) {
+      userSocketMap.delete(socket.id);
+      // Multi-tab check: only set offline if no other sockets for this user exist
+      const stillOnline = Array.from(userSocketMap.values()).includes(userId);
+      if (!stillOnline) {
+        try {
+          const lastSeen = new Date();
+          await prisma.user.update({
+            where: { id: userId },
+            data: { isOnline: false, lastSeen }
+          });
+          io.emit('user-status-change', { userId, isOnline: false, lastSeen });
+        } catch (e) {
+          console.error('Disconnect status error:', e);
+        }
+      }
+    }
   });
 });
 

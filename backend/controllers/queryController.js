@@ -76,7 +76,9 @@ const replyQuery = async (req, res) => {
             where: { id },
             data: {
                 adminReply,
-                status: 'replied'
+                status: 'replied',
+                adminId: req.user.id,
+                isRead: false // Reset isRead so the user sees a notification
             }
         });
         res.json(query);
@@ -85,4 +87,17 @@ const replyQuery = async (req, res) => {
     }
 };
 
-module.exports = { createQuery, getUserQueries, getAllQueries, replyQuery };
+const markQueryAsRead = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const query = await prisma.query.update({
+            where: { id },
+            data: { isRead: true }
+        });
+        res.json(query);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to mark query as read' });
+    }
+};
+
+module.exports = { createQuery, getUserQueries, getAllQueries, replyQuery, markQueryAsRead };

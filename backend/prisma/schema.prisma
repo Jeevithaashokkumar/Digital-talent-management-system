@@ -17,6 +17,8 @@ model User {
   status     String    @default("active") // "active" or "inactive"
   otp        String?
   otpExpires DateTime?
+  isOnline   Boolean   @default(false)
+  lastSeen   DateTime  @default(now())
   createdAt  DateTime  @default(now())
 
   boards           Board[]         @relation("UserBoards")
@@ -36,6 +38,7 @@ model User {
   queries          Query[]
   callerLogs       CallLog[] @relation("CallerLogs")
   receiverLogs     CallLog[] @relation("ReceiverLogs")
+  notifications    Notification[]
 }
 
 model Message {
@@ -43,6 +46,7 @@ model Message {
   content    String
   senderId   String
   receiverId String? // Null for team chat (broadcast)
+  isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   isPinned   Boolean  @default(false)
@@ -103,8 +107,9 @@ model Task {
   assignedTo String?
   createdBy  String
   startDate  DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  reminderStatus Boolean  @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   list     List?     @relation(fields: [listId], references: [id])
   board    Board?    @relation(fields: [boardId], references: [id])
@@ -262,6 +267,8 @@ model Query {
   message    String
   status     String   @default("pending") // "pending", "replied"
   adminReply String?
+  isRead     Boolean  @default(false)
+  adminId    String?
   userId     String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -280,4 +287,16 @@ model CallLog {
 
   caller   User @relation("CallerLogs", fields: [callerId], references: [id])
   receiver User @relation("ReceiverLogs", fields: [receiverId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // "message", "call"
+  email     String
+  subject   String
+  body      String
+  sentAt    DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
 }

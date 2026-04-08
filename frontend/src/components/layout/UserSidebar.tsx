@@ -23,12 +23,21 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBoardStore } from '@/store/useBoardStore';
+import { useQueryStore } from '@/store/useQueryStore';
 
 export default function UserSidebar({ onToggleSidebar, isOpen }: any) {
   const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
   const activeView = useBoardStore(state => state.activeView);
   const setActiveView = useBoardStore(state => state.setActiveView);
+  const queries = useQueryStore(state => state.queries);
+  const fetchUserQueries = useQueryStore(state => state.fetchUserQueries);
+
+  React.useEffect(() => {
+    fetchUserQueries();
+  }, [fetchUserQueries]);
+
+  const unreadCount = queries.filter(q => q.status === 'replied' && !q.isRead).length;
 
   const menuItems = [
     { id: 'user-dashboard', label: 'Operational Summary', icon: <LayoutGrid size={20} />, color: 'text-indigo-400' },
@@ -40,7 +49,7 @@ export default function UserSidebar({ onToggleSidebar, isOpen }: any) {
     { id: 'Chat', label: 'Command Chat', icon: <Users size={20} />, color: 'text-cyan-400' },
     { id: 'Call', label: 'Secure Signal', icon: <Phone size={20} />, color: 'text-emerald-500' },
     { id: 'Call History', label: 'Signal Logs', icon: <Activity size={20} />, color: 'text-indigo-400' },
-    { id: 'user-queries', label: 'Query Interface', icon: <MessageSquare size={20} />, color: 'text-rose-400' },
+    { id: 'user-queries', label: 'Query Interface', icon: <MessageSquare size={20} />, color: 'text-rose-400', badge: unreadCount },
     { id: 'Marketing Hive', label: 'Marketing Hive', icon: <Layout size={20} />, color: 'text-pink-400' },
     { id: 'Global Operations', label: 'Global Operations', icon: <Database size={20} />, color: 'text-blue-400' },
     { id: 'Executive Overlook', label: 'Executive Overlook', icon: <Laptop size={20} />, color: 'text-indigo-400' },
@@ -85,6 +94,11 @@ export default function UserSidebar({ onToggleSidebar, isOpen }: any) {
                 <span className={`text-[11px] font-black uppercase tracking-widest ${activeView === item.id ? 'translate-x-1' : ''} transition-transform`}>
                   {item.label}
                 </span>
+              )}
+              {(item as any).badge > 0 && (
+                <div className={`absolute ${isOpen ? 'right-4' : 'right-2 top-2'} min-w-[18px] h-[18px] flex items-center justify-center bg-rose-500 rounded-full border-2 border-[var(--sidebar-bg)] shadow-lg shadow-rose-500/20 animate-bounce`}>
+                  <span className="text-[9px] font-black text-white leading-none">{(item as any).badge}</span>
+                </div>
               )}
            </button>
          ))}

@@ -22,6 +22,7 @@ interface Card {
   tags: string[];
   listId: string;
   boardId: string;
+  reminderStatus: boolean;
   subTasks?: SubTask[];
   assignee?: { name: string; email: string };
 }

@@ -43,7 +43,7 @@ const login = async (req, res) => {
             { expiresIn: '24h' }
         );
         
-        res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+        res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, isOnline: user.isOnline, lastSeen: user.lastSeen } });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -100,7 +100,7 @@ const verifyOTP = async (req, res) => {
             { expiresIn: '24h' }
         );
 
-        res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+        res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, isOnline: user.isOnline, lastSeen: user.lastSeen } });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -121,7 +121,7 @@ const getMe = async (req, res) => {
 const getUsers = async (req, res) => {
     try {
         const users = await prisma.user.findMany({
-            select: { id: true, name: true, email: true, role: true }
+            select: { id: true, name: true, email: true, role: true, isOnline: true, lastSeen: true }
         });
         res.json(users);
     } catch (error) {

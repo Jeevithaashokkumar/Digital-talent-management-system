@@ -7,5 +7,6 @@ router.post('/submit', verifyToken, queryController.createQuery);
 router.get('/my', verifyToken, queryController.getUserQueries);
 router.get('/all', verifyToken, queryController.getAllQueries);
 router.put('/:id/reply', verifyToken, queryController.replyQuery);
+router.put('/:id/read', verifyToken, queryController.markQueryAsRead);
 
 module.exports = router;

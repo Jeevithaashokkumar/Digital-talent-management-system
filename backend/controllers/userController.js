@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const getUsers = async (req, res) => {
     try {
         const users = await prisma.user.findMany({
-            select: { id: true, name: true, email: true, role: true, status: true, createdAt: true }
+            select: { id: true, name: true, email: true, role: true, status: true, isOnline: true, lastSeen: true, createdAt: true }
         });
         res.json(users);
     } catch (error) {

@@ -5,12 +5,17 @@ import { useQueryStore } from '@/store/useQueryStore';
 import { Inbox, MessageSquare, Send, User as UserIcon, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function AdminQueryModule() {
-  const { queries, loading, fetchAllQueries, replyToQuery } = useQueryStore();
+  const { queries, loading, fetchAllQueries, replyToQuery, markAsRead } = useQueryStore();
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     fetchAllQueries();
   }, [fetchAllQueries]);
+
+  useEffect(() => {
+    const unreadQueries = queries.filter(q => q.status === 'pending' && !q.isRead);
+    unreadQueries.forEach(q => markAsRead(q.id));
+  }, [queries, markAsRead]);
 
   const handleReply = async (queryId: string) => {
     const reply = replyText[queryId];

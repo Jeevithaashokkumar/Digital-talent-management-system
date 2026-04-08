@@ -2,7 +2,7 @@ const prisma = require('../utils/prisma');
 
 const createTask = async (req, res) => {
     try {
-        const { title, description, priority, status, boardId, listId, assignedTo, folderId, labels, dueDate, startDate } = req.body;
+        const { title, description, priority, status, boardId, listId, assignedTo, folderId, labels, dueDate, startDate, reminderStatus } = req.body;
         if (!title) return res.status(400).json({ error: 'Title is required' });
 
         const task = await prisma.task.create({
@@ -18,6 +18,7 @@ const createTask = async (req, res) => {
                 labels: Array.isArray(labels) ? labels.join(',') : (labels || ''),
                 dueDate: dueDate ? new Date(dueDate) : null,
                 startDate: startDate ? new Date(startDate) : null,
+                reminderStatus: reminderStatus !== undefined ? reminderStatus : true,
                 createdBy: req.user.id
             },
             include: { subTasks: true, assignee: { select: { id: true, name: true, email: true } } }
