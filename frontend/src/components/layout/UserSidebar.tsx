@@ -19,7 +19,8 @@ import {
   Layout,
   Database,
   Laptop,
-  Layers
+  Layers,
+  Github
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBoardStore } from '@/store/useBoardStore';
@@ -50,6 +51,7 @@ export default function UserSidebar({ onToggleSidebar, isOpen }: any) {
     { id: 'Call', label: 'Secure Signal', icon: <Phone size={20} />, color: 'text-emerald-500' },
     { id: 'Call History', label: 'Signal Logs', icon: <Activity size={20} />, color: 'text-indigo-400' },
     { id: 'user-queries', label: 'Query Interface', icon: <MessageSquare size={20} />, color: 'text-rose-400', badge: unreadCount },
+    { id: 'Project Submissions', label: 'Signal Submissions', icon: <Github size={20} />, color: 'text-indigo-400' },
     { id: 'Marketing Hive', label: 'Marketing Hive', icon: <Layout size={20} />, color: 'text-pink-400' },
     { id: 'Global Operations', label: 'Global Operations', icon: <Database size={20} />, color: 'text-blue-400' },
     { id: 'Executive Overlook', label: 'Executive Overlook', icon: <Laptop size={20} />, color: 'text-indigo-400' },

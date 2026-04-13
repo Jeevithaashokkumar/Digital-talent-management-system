@@ -39,6 +39,7 @@ model User {
   callerLogs       CallLog[] @relation("CallerLogs")
   receiverLogs     CallLog[] @relation("ReceiverLogs")
   notifications    Notification[]
+  projects         ProjectSubmission[] @relation("UserProjects")
 }
 
 model Message {
@@ -299,4 +300,16 @@ model Notification {
   sentAt    DateTime @default(now())
 
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model ProjectSubmission {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  githubLink  String
+  status      String   @default("pending") // "pending", "reviewed", "rejected"
+  userId      String
+  user        User     @relation("UserProjects", fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

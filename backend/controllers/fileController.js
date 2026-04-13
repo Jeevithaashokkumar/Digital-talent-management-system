@@ -23,6 +23,16 @@ const uploadFiles = async (req, res) => {
                 }
             });
         }));
+
+        // Notify via socket
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('file-uploaded', { 
+                fileNames: savedFiles.map(f => f.originalName), 
+                userName: req.user.name 
+            });
+        }
+
         res.status(201).json(savedFiles);
     } catch (error) {
         res.status(400).json({ error: error.message });

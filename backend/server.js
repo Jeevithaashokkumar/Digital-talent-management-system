@@ -5,13 +5,20 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const { sendNotificationEmail } = require('./utils/mailer');
+const { processBotMessage, NEURAL_BOT_ID } = require('./utils/botBrain');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Update CORS to allow specific frontend URL in production
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+app.use(cors({
+  origin: [frontendUrl, 'http://localhost:3000'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Routes will be imported here
@@ -33,6 +40,7 @@ const analyticsRoutes = require('./routes/analytics');
 const messageRoutes = require('./routes/messages');
 const queryRoutes = require('./routes/queryRoutes');
 const callRoutes = require('./routes/callRoutes');
+const projectRoutes = require('./routes/projects');
 const prisma = require('./utils/prisma');
 
 app.use('/api/auth', authRoutes);
@@ -53,17 +61,22 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/queries', queryRoutes);
 app.use('/api/calls', callRoutes);
+app.use('/api/projects', projectRoutes);
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+    origin: [frontendUrl, 'http://localhost:3000'],
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
+app.set('io', io);
+
 const userSocketMap = new Map(); // socket.id -> userId
 const callTimeouts = new Map(); // callerId -> timeoutHandler
+const taskViewers = new Map(); // taskId -> Array<{userId, name}>
 
 // Socket.io for Collaborative Whiteboard
 io.on('connection', (socket) => {
@@ -71,6 +84,63 @@ io.on('connection', (socket) => {
 
   socket.on('join-whiteboard', (whiteboardId) => {
     socket.join(whiteboardId);
+  });
+
+  // Task Rooms & Collaboration
+  socket.on('view-task', (data) => {
+    const { taskId, user } = data;
+    socket.join(`task-${taskId}`);
+    
+    if (!taskViewers.has(taskId)) {
+      taskViewers.set(taskId, []);
+    }
+    
+    const viewers = taskViewers.get(taskId);
+    if (!viewers.find(v => v.userId === user.id)) {
+      viewers.push({ userId: user.id, name: user.name, socketId: socket.id });
+    }
+    
+    io.to(`task-${taskId}`).emit('task-viewers-update', viewers);
+    console.log(`Task ${taskId} is being viewed by ${user.name}`);
+  });
+
+  socket.on('leave-task', (taskId) => {
+    socket.leave(`task-${taskId}`);
+    const viewers = taskViewers.get(taskId);
+    if (viewers) {
+      const updatedViewers = viewers.filter(v => v.socketId !== socket.id);
+      taskViewers.set(taskId, updatedViewers);
+      io.to(`task-${taskId}`).emit('task-viewers-update', updatedViewers);
+    }
+  });
+
+  socket.on('task-typing', (data) => {
+    const { taskId, user } = data;
+    socket.to(`task-${taskId}`).emit('user-typing', { taskId, user });
+  });
+
+  socket.on('task-stop-typing', (data) => {
+    const { taskId, userId } = data;
+    socket.to(`task-${taskId}`).emit('user-stop-typing', { taskId, userId });
+  });
+
+  socket.on('task-update', (data) => {
+    // Broadcast to everyone so boards update in real-time
+    io.emit('task-recalibrated', data);
+    // Also notify analytics
+    io.emit('analytics-update');
+  });
+
+  socket.on('admin-broadcast', (data) => {
+    // data = { message, type }
+    io.emit('system-announcement', data);
+  });
+
+  socket.on('user-idle', async (userId) => {
+    try {
+      io.emit('user-status-change', { userId, status: 'idle' });
+      console.log(`User ${userId} went idle`);
+    } catch (e) { console.error(e); }
   });
 
   socket.on('join-chat', async (userId) => {
@@ -138,6 +208,67 @@ io.on('connection', (socket) => {
     } else {
       // Team Chat: Send to everyone
       io.emit('receive-message', data);
+    }
+
+    // --- Neural Bot Integration ---
+    if (data.receiverId === NEURAL_BOT_ID) {
+      console.log('Neural Bot processing tactical signal...');
+      
+      // Emit typing signal immediately
+      io.to(data.senderId).emit('user-typing', { userId: NEURAL_BOT_ID, receiverId: data.senderId });
+
+      const botReplyContent = await processBotMessage(data.content, data.senderId, data.senderName);
+      
+      // Reduced delay for faster real-time feel
+      setTimeout(async () => {
+        // Stop typing before sending message
+        io.to(data.senderId).emit('user-stop-typing', { userId: NEURAL_BOT_ID, receiverId: data.senderId });
+
+        const botMsgData = {
+          content: botReplyContent,
+          senderId: NEURAL_BOT_ID,
+          receiverId: data.senderId,
+          senderName: 'Neural Bot',
+          createdAt: new Date().toISOString()
+        };
+
+        try {
+          // Persist bot reply to DB so history works
+          await prisma.message.create({
+            data: {
+              content: botMsgData.content,
+              senderId: botMsgData.senderId,
+              receiverId: botMsgData.receiverId
+            }
+          });
+          
+          // Emit back to sender
+          io.to(data.senderId).emit('receive-message', botMsgData);
+          console.log('Neural Bot signal transmitted.');
+        } catch (e) {
+          console.error('Bot persistence error:', e);
+          // Fallback: emit even if save fails
+          io.to(data.senderId).emit('receive-message', botMsgData);
+        }
+      }, 20);
+    }
+  });
+
+  socket.on('chat-typing', (data) => {
+    // data = { userId, receiverId }
+    if (data.receiverId) {
+      io.to(data.receiverId).emit('user-typing', data);
+    } else {
+      socket.broadcast.emit('user-typing', data);
+    }
+  });
+
+  socket.on('chat-stop-typing', (data) => {
+    // data = { userId, receiverId }
+    if (data.receiverId) {
+      io.to(data.receiverId).emit('user-stop-typing', data);
+    } else {
+      socket.broadcast.emit('user-stop-typing', data);
     }
   });
 
@@ -316,8 +447,21 @@ io.on('connection', (socket) => {
     const userId = userSocketMap.get(socket.id);
     if (userId) {
       userSocketMap.delete(socket.id);
-      // Multi-tab check: only set offline if no other sockets for this user exist
+      // Cleanup Task Viewers on disconnect
+      taskViewers.forEach((viewers, taskId) => {
+        if (viewers.find(v => v.socketId === socket.id)) {
+          const updatedViewers = viewers.filter(v => v.socketId !== socket.id);
+          if (updatedViewers.length === 0) {
+            taskViewers.delete(taskId);
+          } else {
+            taskViewers.set(taskId, updatedViewers);
+          }
+          io.to(`task-${taskId}`).emit('task-viewers-update', updatedViewers);
+        }
+      });
+
       const stillOnline = Array.from(userSocketMap.values()).includes(userId);
+
       if (!stillOnline) {
         try {
           const lastSeen = new Date();

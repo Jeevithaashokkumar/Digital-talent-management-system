@@ -45,6 +45,7 @@ export default function AdminSidebar() {
     { id: 'admin-users', label: 'User Matrix', icon: <Users size={20} />, color: 'text-emerald-400' },
     { id: 'admin-tasks', label: 'Global Directives', icon: <CheckSquare size={20} />, color: 'text-fuchsia-400' },
     { id: 'admin-missions', label: 'Strategic Goals', icon: <Target size={20} />, color: 'text-amber-400' },
+    { id: 'admin-projects', label: 'Mission Archive', icon: <Network size={20} />, color: 'text-indigo-400' },
     { id: 'admin-analytics', label: 'System Analytics', icon: <PieChart size={20} />, color: 'text-indigo-400' },
     { id: 'admin-queries', label: 'Global Queries', icon: <MessageSquare size={20} />, color: 'text-rose-400', badge: unreadCount },
     { id: 'Call History', label: 'Signal Logs', icon: <Activity size={20} />, color: 'text-indigo-400' },

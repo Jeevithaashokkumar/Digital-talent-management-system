@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Users, User, Shield, Zap, Search, MoreHorizontal, Phone, Video, X, Reply, Pin as PinIcon, Smile, Activity } from 'lucide-react';
+import { Send, Users, User, Shield, Zap, Search, MoreHorizontal, Phone, Video, X, Reply, Pin as PinIcon, Smile, Activity, BrainCircuit } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { io } from 'socket.io-client';
 import api from '@/services/api';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,12 +12,13 @@ import { useCallStore } from '@/store/useCallStore';
 import MessageContextMenu from './MessageContextMenu';
 import UserProfileModal from '../layout/UserProfileModal';
 import { UserStatusIndicator } from '../ui/UserStatusIndicator';
+import { useSocket } from '@/hooks/useSocket';
 
 export default function ChatModule() {
   const user = useAuthStore((state: any) => state.user);
   const setActiveView = useBoardStore((state: any) => state.setActiveView);
   const callStore = useCallStore();
-  const socket = (window as any).socket;
+  const { socket, on, emit } = useSocket();
 
   const [messages, setMessages] = useState<any[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -28,6 +30,8 @@ export default function ChatModule() {
   const [editingMessage, setEditingMessage] = useState<any>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [selectedUserProfile, setSelectedUserProfile] = useState<any>(null);
+  const [typingUsers, setTypingUsers] = useState<any[]>([]);
+  const typingTimeoutRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeChatRef = useRef(activeChat);
   const userRef = useRef(user);
@@ -43,7 +47,7 @@ export default function ChatModule() {
   useEffect(() => {
     if (!socket || !user) return;
 
-    socket.emit('join-chat', user.id);
+    emit('join-chat', user.id);
 
     const onReceiveMessage = (msg: any) => {
        const currentActive = activeChatRef.current;
@@ -63,21 +67,17 @@ export default function ChatModule() {
        }
     };
 
-    socket.on('receive-message', onReceiveMessage);
-
-    socket.on('message-edited', (editedMsg: any) => {
+    const unsub1 = on('receive-message', onReceiveMessage);
+    const unsub2 = on('message-edited', (editedMsg: any) => {
        setMessages(prev => prev.map(m => m.id === editedMsg.id ? editedMsg : m));
     });
-
-    socket.on('message-deleted', (id: string) => {
+    const unsub3 = on('message-deleted', (id: string) => {
        setMessages(prev => prev.filter(m => m.id !== id));
     });
-
-    socket.on('message-pinned', (pinnedMsg: any) => {
+    const unsub4 = on('message-pinned', (pinnedMsg: any) => {
        setMessages(prev => prev.map(m => m.id === pinnedMsg.id ? pinnedMsg : m));
     });
-
-    socket.on('message-reacted', (data: any) => {
+    const unsub5 = on('message-reacted', (data: any) => {
        setMessages(prev => prev.map(m => {
           if (m.id === data.messageId) {
              const reactions = m.reactions || [];
@@ -87,8 +87,7 @@ export default function ChatModule() {
           return m;
        }));
     });
-    
-    socket.on('user-status-change', (data: any) => {
+    const unsub6 = on('user-status-change', (data: any) => {
       setUsers(prev => prev.map(u => 
         u.id === data.userId 
           ? { ...u, isOnline: data.isOnline, lastSeen: data.lastSeen || u.lastSeen } 
@@ -96,14 +95,36 @@ export default function ChatModule() {
       ));
     });
 
+    const unsub7 = on('user-typing', (data: any) => {
+       const currentActive = activeChatRef.current;
+       // Logic: only show if from activeChat ID (DM) or from anyone in Team Chat (if activeChat is null)
+       const isFromActiveChat = !currentActive 
+          ? !data.receiverId 
+          : (data.userId === currentActive.id && data.receiverId === userRef.current?.id);
+
+       if (isFromActiveChat) {
+          setTypingUsers(prev => {
+             if (prev.find(u => u.id === data.userId)) return prev;
+             return [...prev, { id: data.userId }];
+          });
+       }
+    });
+
+    const unsub8 = on('user-stop-typing', (data: any) => {
+       setTypingUsers(prev => prev.filter(u => u.id !== data.userId));
+    });
+
     return () => {
-      socket?.off('receive-message');
-      socket?.off('message-edited');
-      socket?.off('message-deleted');
-      socket?.off('message-pinned');
-      socket?.off('message-reacted');
+      unsub1();
+      unsub2();
+      unsub3();
+      unsub4();
+      unsub5();
+      unsub6();
+      unsub7();
+      unsub8();
     };
-  }, [user, socket]);
+  }, [user, on, emit]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -136,7 +157,7 @@ export default function ChatModule() {
     if (editingMessage) {
        try {
           const res = await api.put(`/messages/${editingMessage.id}`, { content: inputValue });
-          socket.emit('edit-message', { ...res.data, receiverId: editingMessage.receiverId, senderId: user?.id });
+          emit('edit-message', { ...res.data, receiverId: editingMessage.receiverId, senderId: user?.id });
           setMessages(prev => prev.map(m => m.id === editingMessage.id ? res.data : m));
           setEditingMessage(null);
           setInputValue('');
@@ -162,12 +183,31 @@ export default function ChatModule() {
 
     try {
       const res = await api.post('/messages', msgData);
-      socket.emit('send-message', { ...res.data, tempId });
+      emit('send-message', { ...res.data, tempId });
+      // Stop typing immediately when sending
+      emit('chat-stop-typing', { userId: user?.id, receiverId: activeChat?.id || null });
       setMessages(prev => prev.map(m => m.tempId === tempId ? res.data : m));
     } catch (e) { 
       console.error(e);
       setMessages(prev => prev.filter(m => m.tempId !== tempId));
     }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+    
+    if (!socket || !user) return;
+
+    // Emit typing signal
+    emit('chat-typing', { userId: user.id, receiverId: activeChat?.id || null });
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    // Set timeout to stop typing after 2 seconds
+    typingTimeoutRef.current = setTimeout(() => {
+      emit('chat-stop-typing', { userId: user.id, receiverId: activeChat?.id || null });
+    }, 2000);
   };
 
   const handleSendToUser = async (targetUserId: string, content: string) => {
@@ -180,7 +220,7 @@ export default function ChatModule() {
     };
     try {
       const res = await api.post('/messages', msgData);
-      socket.emit('send-message', res.data);
+      emit('send-message', res.data);
       if (activeChat?.id === targetUserId) {
         setMessages(prev => [...prev, res.data]);
       }
@@ -196,14 +236,14 @@ export default function ChatModule() {
     if (action === 'delete') {
        try {
           await api.delete(`/messages/${msg.id}`);
-          socket.emit('delete-message', { id: msg.id, receiverId: msg.receiverId, senderId: user?.id });
+          emit('delete-message', { id: msg.id, receiverId: msg.receiverId, senderId: user?.id });
           setMessages(prev => prev.filter(m => m.id !== msg.id));
        } catch (e) { console.error(e); }
     }
     if (action === 'pin') {
        try {
           const res = await api.patch(`/messages/${msg.id}/pin`);
-          socket.emit('pin-message', { ...res.data, receiverId: msg.receiverId, senderId: user?.id });
+          emit('pin-message', { ...res.data, receiverId: msg.receiverId, senderId: user?.id });
           setMessages(prev => prev.map(m => m.id === msg.id ? res.data : m));
        } catch (e) { console.error(e); }
     }
@@ -211,7 +251,7 @@ export default function ChatModule() {
        const emoji = action.split(':')[1];
        try {
           const res = await api.post(`/messages/${msg.id}/react`, { emoji });
-          socket.emit('react-message', { 
+          emit('react-message', { 
              messageId: msg.id, 
              reaction: res.data.reaction || { emoji, userId: user?.id }, 
              action: res.data.action,
@@ -279,19 +319,23 @@ export default function ChatModule() {
                     className={`w-full flex items-center gap-4 p-5 rounded-[2rem] transition-all group ${activeChat?.id === u.id ? 'bg-indigo-500 shadow-2xl shadow-indigo-500/20' : 'hover:bg-white/5 border border-transparent hover:border-white/5'}`}
                   >
                     <div className="relative pointer-events-auto" onClick={(e) => {
+                       if (u.id === 'neural-bot-id-001') return; // Don't open profile for bot
                        e.stopPropagation();
                        setSelectedUserProfile(u);
                        setProfileModalOpen(true);
                     }}>
-                        <div className={`p-3 rounded-2xl ${activeChat?.id === u.id ? 'bg-white/20' : 'bg-white/5 text-white/30 group-hover:text-white group-hover:bg-white/10'}`}>
-                          <User size={20} />
+                        <div className={`p-3 rounded-2xl ${activeChat?.id === u.id ? 'bg-white/20' : (u.id === 'neural-bot-id-001' ? 'bg-indigo-500/10 text-indigo-400 animate-pulse border border-indigo-500/20' : 'bg-white/5 text-white/30 group-hover:text-white group-hover:bg-white/10')}`}>
+                          {u.id === 'neural-bot-id-001' ? <BrainCircuit size={20} /> : <User size={20} />}
                         </div>
                         <div className="absolute -bottom-1 -right-1">
-                           <UserStatusIndicator isOnline={u.isOnline} size={10} />
+                           <UserStatusIndicator isOnline={u.isOnline} isBot={u.id === 'neural-bot-id-001'} size={10} />
                         </div>
                     </div>
                     <div className="text-left font-black uppercase text-xs tracking-widest flex-1 min-w-0">
-                        <p className={`${activeChat?.id === u.id ? 'text-white' : 'text-white/40'} truncate`}>{(u.name || '').replace(/OPERATOR|Operator/gi, 'User').trim() || 'User'}</p>
+                        <div className="flex items-center gap-2">
+                           <p className={`${activeChat?.id === u.id ? 'text-white' : (u.id === 'neural-bot-id-001' ? 'text-indigo-400' : 'text-white/40')} truncate`}>{(u.name || '').replace(/OPERATOR|Operator/gi, 'User').trim() || 'User'}</p>
+                           {u.id === 'neural-bot-id-001' && <Zap size={10} className="text-amber-400 animate-pulse" />}
+                        </div>
                         <div className="flex items-center gap-2">
                            <p className={activeChat?.id === u.id ? 'text-white/60 text-[8px]' : 'text-white/10 text-[8px] italic'}>{u.role}</p>
                            {!u.isOnline && u.lastSeen && (
@@ -320,15 +364,15 @@ export default function ChatModule() {
           {/* Header */}
           <div className="h-24 border-b border-white/5 flex items-center justify-between px-10 shrink-0 bg-[#0c0d15]/50 backdrop-blur-md">
              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 border border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.2)]">
-                   {activeChat ? <User size={24} /> : <Users size={24} />}
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all ${activeChat?.id === 'neural-bot-id-001' ? 'bg-indigo-500 text-white border-indigo-400 shadow-[0_0_30px_rgba(99,102,241,0.4)]' : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'}`}>
+                   {activeChat?.id === 'neural-bot-id-001' ? <BrainCircuit size={24} className="animate-pulse" /> : (activeChat ? <User size={24} /> : <Users size={24} />)}
                 </div>
                 <div>
                    <h3 className="text-xl font-black text-white tracking-tighter uppercase italic drop-shadow-lg">{(activeChat?.name || 'Matrix Team Chat').replace(/OPERATOR|Operator/gi, 'User').trim()}</h3>
                    <div className="flex items-center gap-2 mt-1">
-                      <UserStatusIndicator isOnline={activeChat ? activeChat.isOnline : true} size={8} />
-                      <span className={`${activeChat?.isOnline ? 'text-emerald-400/60' : 'text-white/20'} text-[8px] font-black uppercase tracking-[0.2em]`}>
-                         {activeChat ? (activeChat.isOnline ? 'Active Signal Matrix' : `Link Severed — ${activeChat.lastSeen ? `Last Seen ${formatDistanceToNow(new Date(activeChat.lastSeen), { addSuffix: true })}` : 'Away'}`) : 'Global Matrix Static'}
+                      <UserStatusIndicator isOnline={activeChat ? activeChat.isOnline : true} isBot={activeChat?.id === 'neural-bot-id-001'} size={8} />
+                      <span className={`${activeChat?.id === 'neural-bot-id-001' ? 'text-indigo-400 animate-pulse' : (activeChat?.isOnline ? 'text-emerald-400/60' : 'text-white/20')} text-[8px] font-black uppercase tracking-[0.2em]`}>
+                         {activeChat ? (activeChat.id === 'neural-bot-id-001' ? 'AI Intelligence Operational' : (activeChat.isOnline ? 'Active Signal Matrix' : `Link Severed — ${activeChat.lastSeen ? `Last Seen ${formatDistanceToNow(new Date(activeChat.lastSeen), { addSuffix: true })}` : 'Away'}`)) : 'Global Matrix Static'}
                       </span>
                    </div>
                 </div>
@@ -432,6 +476,31 @@ export default function ChatModule() {
              <div ref={scrollRef} />
           </div>
 
+          {/* Typing Indicator */}
+          <div className="px-10 h-6 flex items-center">
+            <AnimatePresence>
+               {typingUsers.length > 0 && (
+                 <motion.div 
+                   initial={{ opacity: 0, y: 10 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   exit={{ opacity: 0, y: 5 }}
+                   className="flex items-center gap-2"
+                 >
+                    <div className="flex gap-1">
+                       <span className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                       <span className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                       <span className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce"></span>
+                    </div>
+                    <span className="text-[9px] font-black text-indigo-400/60 uppercase tracking-widest italic">
+                       {typingUsers.length === 1 
+                         ? `${(activeChat?.id === 'neural-bot-id-001' ? 'Neural Bot' : 'Operator')} signal recalibrating...` 
+                         : 'Multiple tactical signals detected...'}
+                    </span>
+                 </motion.div>
+               )}
+            </AnimatePresence>
+          </div>
+
           {/* Input Area */}
           <div className="p-10 pt-4 shrink-0">
              {/* Reply Preview */}
@@ -462,7 +531,7 @@ export default function ChatModule() {
                 </div>
                 <input 
                   value={inputValue}
-                  onChange={e => setInputValue(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
                   placeholder={editingMessage ? "Update transmission..." : "Encrypted transmission..."}
                   className="w-full bg-[#12141c] border border-white/5 rounded-[2rem] py-6 pl-16 pr-24 text-white font-bold outline-none focus:border-indigo-500/30 transition-all text-sm placeholder:italic"

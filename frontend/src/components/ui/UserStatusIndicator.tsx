@@ -10,6 +10,7 @@ interface UserStatusIndicatorProps {
   size?: number;
   showText?: boolean;
   className?: string;
+  isBot?: boolean;
 }
 
 export const UserStatusIndicator: React.FC<UserStatusIndicatorProps> = ({ 
@@ -17,8 +18,21 @@ export const UserStatusIndicator: React.FC<UserStatusIndicatorProps> = ({
   lastSeen, 
   size = 12, 
   showText = false,
-  className = ""
+  className = "",
+  isBot = false
 }) => {
+  if (isBot) {
+    return (
+      <div className={`flex items-center gap-2 ${className}`}>
+        <div className="relative flex items-center justify-center">
+          <div className="w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,1)]" />
+          <div className="absolute inset-0 bg-indigo-500 rounded-full blur-[4px] opacity-60 animate-ping"></div>
+        </div>
+        {showText && <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest italic animate-pulse">Neural Active</span>}
+      </div>
+    );
+  }
+
   if (isOnline) {
     return (
       <div className={`flex items-center gap-2 ${className}`}>

@@ -11,8 +11,12 @@ import {
   ArrowDownRight,
   Briefcase,
   Zap,
-  Shield
+  Shield,
+  X,
+  Send
 } from 'lucide-react';
+import { useSocket } from '@/hooks/useSocket';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BarChart, 
   Bar, 
@@ -31,6 +35,23 @@ interface AdminOverviewProps {
 }
 
 export default function AdminOverview({ stats }: AdminOverviewProps) {
+  const { emit } = useSocket();
+  const [broadcastId, setBroadcastId] = React.useState<number | null>(null);
+  const [broadcastMessage, setBroadcastMessage] = React.useState('');
+  const [isSending, setIsSending] = React.useState(false);
+
+  const handleBroadcast = () => {
+    if (!broadcastMessage.trim()) return;
+    setIsSending(true);
+    emit('admin-broadcast', { message: broadcastMessage, type: 'announcement' });
+    setTimeout(() => {
+      setBroadcastMessage('');
+      setBroadcastId(null);
+      setIsSending(false);
+      (window as any).addToast?.('Announcement Broadcasted!', 'success');
+    }, 1000);
+  };
+
   const cards = [
     { title: 'Total Users', value: stats.totalUsers || 0, icon: <Users className="text-blue-400" />, color: 'from-blue-500/20 to-blue-600/5', trend: '+12%' },
     { title: 'Active Missions', value: stats.activeMissions || 0, icon: <Target className="text-emerald-400" />, color: 'from-emerald-500/20 to-emerald-600/5', trend: '+5%' },
@@ -189,8 +210,13 @@ export default function AdminOverview({ stats }: AdminOverviewProps) {
       <div className="pt-8">
          <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-6 italic">Command Center Quick Actions</h4>
          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button 
+              onClick={() => setBroadcastId(1)}
+              className={`flex items-center justify-center gap-3 p-6 bg-white/5 border border-white/5 rounded-3xl text-white/40 font-black text-[10px] uppercase tracking-widest transition-all hover:bg-indigo-500/20 hover:text-indigo-400`}
+            >
+               <Zap size={14}/> Broadcast Message
+            </button>
             {[
-              { label: 'Broadcast Message', icon: <Zap size={14}/>, color: 'hover:bg-indigo-500/20 hover:text-indigo-400' },
               { label: 'Register User', icon: <Users size={14}/>, color: 'hover:bg-blue-500/20 hover:text-blue-400' },
               { label: 'Global Directive', icon: <Shield size={14}/>, color: 'hover:bg-rose-500/20 hover:text-rose-400' },
               { label: 'System Lockdown', icon: <Clock size={14}/>, color: 'hover:bg-amber-500/20 hover:text-amber-400' },
@@ -201,6 +227,49 @@ export default function AdminOverview({ stats }: AdminOverviewProps) {
             ))}
          </div>
       </div>
+
+      <AnimatePresence>
+        {broadcastId && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+              onClick={() => setBroadcastId(null)} 
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 30 }}
+              className="relative w-full max-w-lg bg-[#12141c] border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden p-10"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-black text-white tracking-tighter uppercase italic">Global Broadcast</h3>
+                <button onClick={() => setBroadcastId(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all"><X size={20} className="text-white/40" /></button>
+              </div>
+              
+              <div className="space-y-6">
+                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Signal Message:</p>
+                <textarea 
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  placeholder="Enter high-priority system announcement..."
+                  className="w-full bg-white/5 border border-white/5 rounded-3xl p-6 text-white text-sm font-bold min-h-[150px] outline-none focus:border-indigo-500/30 transition-all resize-none"
+                />
+                
+                <button 
+                  disabled={isSending || !broadcastMessage.trim()}
+                  onClick={handleBroadcast}
+                  className="w-full py-5 bg-gradient-to-r from-indigo-600 to-indigo-400 hover:from-indigo-500 hover:to-indigo-300 disabled:opacity-30 disabled:grayscale rounded-3xl text-white font-black text-xs uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-4 shadow-xl shadow-indigo-500/20"
+                >
+                  {isSending ? 'Sending Signal...' : 'Transmit Link'} <Send size={16} />
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

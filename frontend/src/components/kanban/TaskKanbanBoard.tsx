@@ -5,6 +5,8 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { Plus, Filter, X, Tag, Calendar, User, AlertCircle, CheckCircle2, Clock, Trash2, Edit2, Flag } from 'lucide-react';
 import api from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSocket } from '@/hooks/useSocket';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const COLUMNS = [
   { id: 'todo', title: 'To Do', color: 'bg-slate-500', glow: 'shadow-slate-500/20', dot: 'bg-slate-400' },
@@ -20,6 +22,7 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string
 
 export default function TaskKanbanBoard() {
   const { user: authUser } = useAuthStore();
+  const { on, emit } = useSocket();
   const isAdmin = authUser?.role === 'admin';
   const [tasks, setTasks] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -32,6 +35,10 @@ export default function TaskKanbanBoard() {
     assignedTo: '', dueDate: '', labels: '',
   });
   const [formError, setFormError] = useState('');
+
+  // Real-time State
+  const [viewers, setViewers] = useState<any[]>([]);
+  const [typingUsers, setTypingUsers] = useState<Record<string, string>>({}); // userId -> name
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -54,6 +61,34 @@ export default function TaskKanbanBoard() {
 
   useEffect(() => { fetchTasks(); fetchUsers(); }, [fetchTasks, fetchUsers]);
 
+  useEffect(() => {
+    on('task-viewers-update', (data: any) => setViewers(data));
+    on('user-typing', (data: any) => {
+      setTypingUsers(prev => ({ ...prev, [data.user.id]: data.user.name }));
+    });
+    on('user-stop-typing', (data: any) => {
+      setTypingUsers(prev => {
+        const next = { ...prev };
+        delete next[data.userId];
+        return next;
+      });
+    });
+    on('task-recalibrated', () => fetchTasks());
+  }, [on, fetchTasks]);
+
+  const handleTyping = () => {
+    if (editTask && authUser) {
+      emit('task-typing', { taskId: editTask.id, user: { id: authUser.id, name: authUser.name } });
+      
+      // Stop typing indicator after 3 seconds of no input
+      const timeout = (window as any).typingTimeout;
+      if (timeout) clearTimeout(timeout);
+      (window as any).typingTimeout = setTimeout(() => {
+        emit('task-stop-typing', { taskId: editTask.id, userId: authUser.id });
+      }, 3000);
+    }
+  };
+
   const openCreate = (status = 'todo') => {
     setEditTask(null);
     setFormData({ title: '', description: '', priority: 'medium', status, assignedTo: '', dueDate: '', labels: '' });
@@ -61,8 +96,21 @@ export default function TaskKanbanBoard() {
     setShowModal(true);
   };
 
+  const closeTask = () => {
+    if (editTask) {
+      emit('leave-task', editTask.id);
+      emit('task-stop-typing', { taskId: editTask.id, userId: authUser?.id });
+    }
+    setShowModal(false);
+    setEditTask(null);
+    setViewers([]);
+  };
+
   const openEdit = (task: any) => {
     setEditTask(task);
+    if (authUser) {
+      emit('view-task', { taskId: task.id, user: { id: authUser.id, name: authUser.name } });
+    }
     setFormData({
       title: task.title,
       description: task.description || '',
@@ -87,10 +135,12 @@ export default function TaskKanbanBoard() {
       };
       if (editTask) {
         await api.put(`/tasks/${editTask.id}`, payload);
+        emit('task-update', { id: editTask.id, ...payload });
       } else {
         await api.post('/tasks', payload);
+        emit('task-update', { title: payload.title });
       }
-      setShowModal(false);
+      closeTask();
       fetchTasks();
       (window as any).addToast?.(editTask ? 'Task updated!' : 'Task created!', 'success');
     } catch (e: any) {
@@ -102,6 +152,7 @@ export default function TaskKanbanBoard() {
     if (!confirm('Delete this task?')) return;
     try {
       await api.delete(`/tasks/${id}`);
+      emit('task-update', { id, deleted: true });
       fetchTasks();
       (window as any).addToast?.('Task deleted', 'error');
     } catch (e) { (window as any).addToast?.('Failed to delete', 'error'); }
@@ -115,6 +166,7 @@ export default function TaskKanbanBoard() {
     setTasks(prev => prev.map(t => t.id === draggableId ? { ...t, status: newStatus } : t));
     try {
       await api.patch(`/tasks/${draggableId}/status`, { status: newStatus });
+      emit('task-update', { id: draggableId, status: newStatus });
       (window as any).addToast?.(`Moved to ${COLUMNS.find(c => c.id === newStatus)?.title}`, 'info');
     } catch {
       fetchTasks(); // revert
@@ -298,17 +350,52 @@ export default function TaskKanbanBoard() {
       {/* Create/Edit Task Modal */}
       {showModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-xl bg-[#1e202e] border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+            onClick={closeTask} 
+          />
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            className="relative w-full max-w-xl bg-[#1e202e] border border-white/10 rounded-3xl shadow-2xl overflow-hidden"
+          >
             {/* Modal Header */}
             <div className="px-8 pt-8 pb-6 border-b border-white/10 flex items-center justify-between">
-              <h3 className="text-xl font-black text-white">{editTask ? 'Edit Task' : 'Create New Task'}</h3>
-              <button onClick={() => setShowModal(false)} className="text-white/30 hover:text-white p-2 hover:bg-white/10 rounded-xl transition-all">
+              <div>
+                <h3 className="text-xl font-black text-white">{editTask ? 'Edit Task' : 'Create New Task'}</h3>
+                {editTask && viewers.length > 1 && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="flex -space-x-2">
+                      {viewers.filter(v => v.userId !== authUser?.id).map((v, i) => (
+                        <div key={i} className="w-5 h-5 rounded-full bg-indigo-500 border-2 border-[#1e202e] flex items-center justify-center text-[8px] font-black text-white" title={v.name}>
+                          {v.name.substring(0, 2).toUpperCase()}
+                        </div>
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">
+                      {viewers.length - 1} other{viewers.length > 2 ? 's' : ''} viewing
+                    </span>
+                  </div>
+                )}
+              </div>
+              <button onClick={closeTask} className="text-white/30 hover:text-white p-2 hover:bg-white/10 rounded-xl transition-all">
                 <X size={20} />
               </button>
             </div>
 
             <div className="px-8 py-6 space-y-5 max-h-[70vh] overflow-y-auto">
+              {Object.keys(typingUsers).length > 0 && (
+                <div className="flex items-center gap-2 text-indigo-400 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">
+                  <div className="flex gap-1">
+                    <span className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '200ms' }} />
+                    <span className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '400ms' }} />
+                  </div>
+                  {Object.values(typingUsers).join(', ')} is updating task...
+                </div>
+              )}
               {formError && (
                 <div className="flex items-center gap-2 text-rose-400 text-sm bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">
                   <AlertCircle size={16} /> {formError}
@@ -322,7 +409,10 @@ export default function TaskKanbanBoard() {
                   autoFocus
                   type="text"
                   value={formData.title}
-                  onChange={e => setFormData(f => ({ ...f, title: e.target.value }))}
+                  onChange={e => {
+                    setFormData(f => ({ ...f, title: e.target.value }));
+                    handleTyping();
+                  }}
                   placeholder="What needs to be done?"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500/50 transition-all placeholder:text-white/20 font-medium"
                 />
@@ -333,7 +423,10 @@ export default function TaskKanbanBoard() {
                 <label className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-2 block">Description</label>
                 <textarea
                   value={formData.description}
-                  onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
+                  onChange={e => {
+                    setFormData(f => ({ ...f, description: e.target.value }));
+                    handleTyping();
+                  }}
                   placeholder="Add more details..."
                   rows={3}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500/50 transition-all placeholder:text-white/20 font-medium resize-none"
@@ -411,7 +504,7 @@ export default function TaskKanbanBoard() {
             {/* Footer */}
             <div className="px-8 pb-8 pt-4 flex gap-3">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={closeTask}
                 className="flex-1 py-3 rounded-xl bg-white/5 text-white font-black hover:bg-white/10 transition-all border border-white/10"
               >
                 Cancel
@@ -423,7 +516,7 @@ export default function TaskKanbanBoard() {
                 {editTask ? '✓ Update Task' : '+ Create Task'}
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
     </div>

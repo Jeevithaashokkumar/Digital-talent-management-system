@@ -17,11 +17,14 @@ import {
 } from 'lucide-react';
 import api from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSocket } from '@/hooks/useSocket';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function UserTaskManager() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const user = useAuthStore(state => state.user);
+  const { on, emit } = useSocket();
 
   const fetchMyTasks = async () => {
     try {
@@ -36,11 +39,13 @@ export default function UserTaskManager() {
 
   useEffect(() => {
     fetchMyTasks();
-  }, []);
+    on('task-recalibrated', () => fetchMyTasks());
+  }, [on]);
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {
     try {
       await api.patch(`/tasks/${id}/status`, { status: newStatus });
+      emit('task-update', { id, status: newStatus });
       fetchMyTasks();
       
       // Admin Link: Notify via Toast (System Logic)
@@ -80,16 +85,28 @@ export default function UserTaskManager() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 max-w-5xl">
+        <AnimatePresence mode='popLayout'>
         {tasks.map((task) => (
-          <div key={task.id} className="group relative bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-8 backdrop-blur-xl hover:border-indigo-500/20 transition-all duration-500">
+          <motion.div 
+            layout
+            key={task.id} 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="group relative bg-[#12141c]/50 border border-white/5 rounded-[2.5rem] p-8 backdrop-blur-xl hover:border-indigo-500/20 transition-all duration-500"
+          >
             <div className="absolute top-0 right-0 p-8">
-               <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${
+               <motion.div 
+                 key={task.status}
+                 initial={{ scale: 0.8, opacity: 0 }}
+                 animate={{ scale: 1, opacity: 1 }}
+                 className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${
                  task.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                  task.status === 'in-progress' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                  'bg-white/5 text-white/40 border-white/5'
                }`}>
                  {task.status}
-               </div>
+               </motion.div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-10 items-start md:items-center">
@@ -119,20 +136,24 @@ export default function UserTaskManager() {
 
                <div className="w-full md:w-auto flex flex-col gap-3">
                   {task.status === 'todo' && (
-                    <button 
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => handleStatusUpdate(task.id, 'in-progress')}
                       className="w-full md:w-48 py-5 bg-indigo-600 hover:bg-indigo-500 rounded-2xl text-white font-black text-xs uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-4 shadow-xl shadow-indigo-500/20 group/btn"
                     >
                       Initialize <Play size={14} className="fill-white group-hover/btn:translate-x-1 transition-transform" />
-                    </button>
+                    </motion.button>
                   )}
                   {task.status === 'in-progress' && (
-                    <button 
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => handleStatusUpdate(task.id, 'completed')}
                       className="w-full md:w-48 py-5 bg-emerald-600 hover:bg-emerald-500 rounded-2xl text-white font-black text-xs uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-4 shadow-xl shadow-emerald-500/20 group/btn"
                     >
                       Finalize <Check size={18} className="group-hover/btn:scale-125 transition-transform" />
-                    </button>
+                    </motion.button>
                   )}
                   {task.status === 'completed' && (
                     <div className="w-full md:w-48 py-5 bg-white/5 border border-white/5 rounded-2xl text-white/20 font-black text-xs uppercase tracking-[0.4em] flex items-center justify-center gap-4">
@@ -144,8 +165,9 @@ export default function UserTaskManager() {
                   </button>
                </div>
             </div>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
 
         {tasks.length === 0 && (
           <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-[3rem] p-10 bg-white/[0.02]">

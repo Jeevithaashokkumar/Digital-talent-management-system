@@ -10,7 +10,13 @@ import {
 } from 'lucide-react';
 import api from '@/services/api';
 
-const socket: Socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000');
+const getSocketUrl = () => {
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) return process.env.NEXT_PUBLIC_SOCKET_URL;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  return apiUrl.replace(/\/api$/, '');
+};
+
+const socket: Socket = io(getSocketUrl());
 
 interface WhiteboardCanvasProps {
   whiteboard: any;

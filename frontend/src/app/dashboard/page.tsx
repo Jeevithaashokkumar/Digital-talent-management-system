@@ -36,6 +36,8 @@ import ResourceAllocation from '@/components/analytics/ResourceAllocation';
 import UserQueryModule from '@/components/queries/UserQueryModule';
 import AdminQueryModule from '@/components/queries/AdminQueryModule';
 import CallHistory from '@/components/call/CallHistory';
+import ProjectListModule from '@/components/user/ProjectListModule';
+import ProjectReviewModule from '@/components/admin/ProjectReviewModule';
 import ToastContainer from '@/components/ui/ToastContainer';
 // Zombie components removed to restore build stability
 import { useBoardStore } from '@/store/useBoardStore';
@@ -45,10 +47,11 @@ import { Plus, LayoutGrid, LayoutList, Settings, Users, Activity, Search, Bell, 
 import { v4 as uuidv4 } from 'uuid';
 
 import { useCallStore } from '@/store/useCallStore';
-import { io } from 'socket.io-client';
+import { useSocket } from '@/hooks/useSocket';
 import IncomingCallModal from '@/components/call/IncomingCallModal';
 
-let socket: any;
+// Idle Timeout Configuration (5 minutes)
+const IDLE_TIMEOUT = 5 * 60 * 1000;
 
 export default function Dashboard() {
   const user = useAuthStore(state => state.user);
@@ -60,6 +63,7 @@ export default function Dashboard() {
   const activeView = useBoardStore(state => state.activeView);
   const setActiveView = useBoardStore(state => state.setActiveView);
   
+  const { socket, on, emit } = useSocket();
   const setReceivingCall = useCallStore(state => state.setReceivingCall);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isAddingList, setIsAddingList] = useState(false);
@@ -75,31 +79,13 @@ export default function Dashboard() {
   const [adminStats, setAdminStats] = useState<any>({});
   const [userStats, setUserStats] = useState<any>({});
   const [toasts, setToasts] = useState<any[]>([]);
+  
+  // Idle Detection State
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [isIdle, setIsIdle] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      const socketUrl = apiUrl.replace(/\/api$/, '');
-      socket = io(socketUrl);
-      (window as any).socket = socket;
-      socket.emit('join-chat', user.id);
-
-      socket.on('incoming-call', (data: any) => {
-        setReceivingCall(true, { id: data.from, name: data.name }, data.signal, data.type);
-      });
-    }
-
-    return () => {
-      socket?.disconnect();
-    };
-  }, [user?.id, setReceivingCall]);
-
+  // Derived State & Helper Functions (Moved up for initialization)
   const isAdmin = user?.role === 'admin';
-
-  // Calculate Stats
-  const allTasks = currentBoard?.lists.flatMap(l => l.tasks) || [];
-  const completedTasks = allTasks.filter(t => t.status === 'completed');
-  const completionRate = allTasks.length > 0 ? Math.round((completedTasks.length / allTasks.length) * 100) : 0;
 
   const addToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     const id = uuidv4();
@@ -110,24 +96,6 @@ export default function Dashboard() {
   const removeToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
-
-  const fetchInitialData = useCallback(async () => {
-    try {
-      const { docService, folderService, whiteboardService } = await import('@/services/boardService');
-      const [dRes, fRes, wRes, uRes] = await Promise.all([
-        docService.getDocs(),
-        folderService.getFolders(),
-        whiteboardService.getWhiteboards(),
-        api.get('/users')
-      ]);
-      setDocs(dRes.data);
-      setFolders(fRes.data);
-      setWhiteboards(wRes.data);
-      setUsers(uRes.data);
-    } catch (e) {
-      console.error("Neural Fetch Failed:", e);
-    }
-  }, []); // Empty dependency array means it only runs on mount (or if dependencies change, but we removed them)
 
   const fetchAdminStats = useCallback(async () => {
     if (isAdmin) {
@@ -150,6 +118,85 @@ export default function Dashboard() {
       }
     }
   }, [isAdmin]);
+
+  const fetchInitialData = useCallback(async () => {
+    try {
+      const { docService, folderService, whiteboardService } = await import('@/services/boardService');
+      const [dRes, fRes, wRes, uRes] = await Promise.all([
+        docService.getDocs(),
+        folderService.getFolders(),
+        whiteboardService.getWhiteboards(),
+        api.get('/users')
+      ]);
+      setDocs(dRes.data);
+      setFolders(fRes.data);
+      setWhiteboards(wRes.data);
+      setUsers(uRes.data);
+    } catch (e) {
+      console.error("Neural Fetch Failed:", e);
+    }
+  }, []);
+
+  // Stats calculation
+  const allTasks = currentBoard?.lists.flatMap(l => l.tasks) || [];
+  const completedTasks = allTasks.filter(t => t.status === 'completed');
+  const completionRate = allTasks.length > 0 ? Math.round((completedTasks.length / allTasks.length) * 100) : 0;
+
+  useEffect(() => {
+    if (user) {
+      on('incoming-call', (data: any) => {
+        setReceivingCall(true, { id: data.from, name: data.name }, data.signal, data.type);
+      });
+
+      on('task-recalibrated', (data: any) => {
+        fetchBoardDetails('default');
+        addToast(`Real-time update: ${data.title}`, 'info');
+      });
+
+      on('analytics-update', () => {
+        fetchAdminStats();
+        fetchUserStats();
+      });
+
+      on('system-announcement', (data: any) => {
+        addToast(data.message, 'info');
+        // We could show a more premium modal here if needed
+      });
+      
+      on('file-uploaded', (data: any) => {
+        if (isAdmin) addToast(`New file uploaded by ${data.userName}`, 'success');
+      });
+    }
+  }, [user, on, setReceivingCall, fetchBoardDetails, fetchAdminStats, fetchUserStats, isAdmin]);
+
+  // Idle Detection Implementation
+  useEffect(() => {
+    const handleActivity = () => {
+      setLastActivity(Date.now());
+      if (isIdle) {
+        setIsIdle(false);
+        emit('join-chat', user?.id); // Re-signal active
+      }
+    };
+
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+
+    const interval = setInterval(() => {
+      if (Date.now() - lastActivity > IDLE_TIMEOUT && !isIdle) {
+        setIsIdle(true);
+        emit('user-idle', user?.id);
+        addToast("System on standby. You are now IDLE.", "info");
+      }
+    }, 10000);
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      clearInterval(interval);
+    };
+  }, [lastActivity, isIdle, user?.id, emit]);
+
 
   useEffect(() => {
     fetchUser();
@@ -314,6 +361,10 @@ export default function Dashboard() {
               <CallHistory />
             )}
 
+            {activeView === 'Project Submissions' && (
+              <ProjectListModule />
+            )}
+
             {/* Missing modules pruned */}
 
             {activeView === 'admin-dashboard' && (
@@ -334,6 +385,10 @@ export default function Dashboard() {
 
             {activeView === 'admin-queries' && (
               <AdminQueryModule />
+            )}
+
+            {activeView === 'admin-projects' && (
+              <ProjectReviewModule />
             )}
 
             {activeView === 'admin-tasks' && (
