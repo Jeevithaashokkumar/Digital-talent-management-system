@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 
 // Admin only: Get all users
 const getUsers = async (req, res) => {
